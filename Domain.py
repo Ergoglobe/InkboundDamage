@@ -28,11 +28,14 @@ class Player:
             self.damage_dealt[damage_source] / self.get_total_damage()
         )
 
+
 class DamageDealt:
     id: int
 
+
 class DamageTaken:
     id: int
+
 
 class Entity:
     id: int
@@ -40,6 +43,8 @@ class Entity:
     isEnemy: bool
     isBoss: bool
     isPotion: bool
+    isVestige: bool
+    isMisc: bool
 
 
 class GameLog:
