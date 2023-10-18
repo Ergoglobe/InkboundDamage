@@ -2,6 +2,8 @@ import time
 import re
 import os
 
+import pandas as pd
+
 import Display
 from Domain import GameLog, Player
 
@@ -47,9 +49,11 @@ def handle_line(line, game):
     if "EventOnCombatStarted" in line:
         COMBAT_NUMBER += 1
 
-    if "QuestObjective_TurnCount" in line:
+    # if "QuestObjective_TurnCount" in line:
+    if "Advance turn" in line:
         global TURN_NUMBER
         TURN_NUMBER += 1
+        print(TURN_NUMBER)
 
     if "TargetingSystem handling event: EventOnCombatEndSequenceStarted" in line:
         # Reset turns to 0
