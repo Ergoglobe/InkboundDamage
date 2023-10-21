@@ -13,8 +13,8 @@ DIVE_NUMBER: int = 0  # starts at 0, increments by 1 each new reset_game
 COMBAT_NUMBER = 0  # starts at 0, increments by 1 each time combat start is triggered
 TURN_NUMBER = 0  # starts at 0, increments by 1 each time a turn is triggered, resets to 0 on combat end
 
-DIVE_LOG = DiveLog(0)
-DIVE_LOGS = []
+DIVE_LOG = None  # starts at 0 doesnt get added to the tabs
+DIVE_LOGS = {}
 
 KILLED = False
 
@@ -71,7 +71,7 @@ def follow():
         if not next_line:
             # TODO: create array of dive logs to send to render
             Display.render(DIVE_LOGS)
-            time.sleep(0.1)  # can probably increase this to reduce program resources
+            time.sleep(2)  # can probably increase this to reduce program resources
             continue
 
         yield next_line
@@ -110,25 +110,28 @@ class EventSystem:
 
 def handle_line(line):
     global DIVE_LOG
+    global DIVE_LOGS
+    global DIVE_NUMBER
+    global COMBAT_NUMBER
+    global TURN_NUMBER
 
     if "Party run start triggered" in line:
-        reset_dive(DIVE_LOG)
-
-        global DIVE_NUMBER
-        global COMBAT_NUMBER
+        # reset_dive(DIVE_LOG)
         DIVE_NUMBER += 1
         COMBAT_NUMBER = 0
+        TURN_NUMBER = 0
 
         # create DIVE_LOG for current dive
         DIVE_LOG = DiveLog(DIVE_NUMBER)
-        # add DIVE_LOG to array
-        DIVE_LOGS.append(DIVE_LOG)
+        # add DIVE_LOG to dicionary
+        DIVE_LOGS[DIVE_NUMBER] = DIVE_LOG
+
+        print("Party Run Started " + str(DIVE_NUMBER))
 
     if "EventOnCombatStarted" in line:
         COMBAT_NUMBER += 1
 
     if "QuestObjective_TurnCount" in line:
-        global TURN_NUMBER
         TURN_NUMBER += 1
 
     if "TargetingSystem handling event: EventOnCombatEndSequenceStarted" in line:
@@ -137,10 +140,14 @@ def handle_line(line):
 
     if "is playing ability" in line:
         register_new_player(line, DIVE_LOG)
+
     if "broadcasting EventOnUnitDamaged" in line:
         register_ability_damage(line, DIVE_LOG)
+
     if "Setting unit class for" in line:
-        register_class(line, DIVE_LOG)
+        if DIVE_LOG is not None:
+            register_class(line, DIVE_LOG)
+
     # if "EventOnUnitStatusEffectStacks" in line:
     #     register_status_effect_stacks(line, game)
 
@@ -225,7 +232,17 @@ def register_new_player(line, dive):
 
 
 # ConstrictUpgrade_Legendary_Entwine becomes Constrict -> Entwine
-def clean_damage_type_jank(damage_type):
+def clean_damage_type_jank(line):
+    damage_type = (
+        re.search("(?<=ActionData:)([a-zA-Z-_]*)", line)
+        .group()
+        .removeprefix("ActionData-")
+        .removesuffix("_Action")
+        .removesuffix("_ActionData")
+        .removesuffix("Damage")
+        .removesuffix("_")
+    )
+
     # Maybe remove vestige and just leave the vestige name?
     if "All_Legendary_" in damage_type:
         damage_type = damage_type.replace("All_Legendary_", " -> ")
@@ -249,15 +266,7 @@ def register_ability_damage(line, dive):
     damage_amount = int(re.search("(?<=DamageAmount:)(\d*)", line).group())
 
     # Why is their naming scheme so jank??
-    damage_type = clean_damage_type_jank(
-        re.search("(?<=ActionData:)([a-zA-Z-_]*)", line)
-        .group()
-        .removeprefix("ActionData-")
-        .removesuffix("_Action")
-        .removesuffix("_ActionData")
-        .removesuffix("Damage")
-        .removesuffix("_")
-    )
+    damage_type = clean_damage_type_jank(line)
 
     players = dive.get_players()
 

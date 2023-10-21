@@ -7,28 +7,37 @@ root.attributes("-topmost", True)
 canvas = tk.Canvas(root)
 # root.attributes('-alpha', 0.8)
 canvas.pack()
-player_frames = {}
-player_labels: dict[int, dict[str, any]] = {}
+# player_frames = {}
+# player_labels: dict[int, dict[str, any]] = {}
 
 
 DIVE_TABS = {}
 
+PLAYER_FRAMES = {}
+PLAYER_LABELS = {}
+
 
 def reset():
-    global player_labels
-    player_labels = {}
-    global player_frames
-    player_frames = {}
+    # global player_labels
+    # player_labels = {}
+    # global player_frames
+    # player_frames = {}
     for child in canvas.winfo_children():
         child.destroy()
 
 
 def render(dive_logs):
     global DIVE_TABS
+    global PLAYER_FRAMES
+    global PLAYER_LABELS
 
     if len(dive_logs) != 0:
-        for dive_log in dive_logs:
+        for dive_log_key in dive_logs:
             # if DIVE_TABS is empty like at the start of the program
+            dive_log = dive_logs[dive_log_key]
+
+            dive_number = dive_log.dive_number
+
             if len(DIVE_TABS) == 0:
                 # create tab controller
                 tabControl = ttk.Notebook(canvas)
@@ -37,16 +46,26 @@ def render(dive_logs):
                 dive_tab.pack(fill="both", expand=True)
 
                 # add tab to all tabs
-                DIVE_TABS[dive_log.dive_number] = dive_tab
+                DIVE_TABS[dive_number] = dive_tab
                 # print("adding dive_tab #" + str(dive_log.dive_number))
 
-                tabControl.add(dive_tab, text="Dive #" + str(dive_log.dive_number))
+                player_frames = {}
+                player_labels: dict[int, dict[str, any]] = {}
+
+                PLAYER_FRAMES[dive_number] = player_frames
+                PLAYER_LABELS[dive_number] = player_labels
+
+                tabControl.add(dive_tab, text="Dive #" + str(dive_number))
                 tabControl.pack(expand=1, fill="both")
             else:
-                # get dive dab for current dive_number
-                if dive_log.dive_number in DIVE_TABS:
-                    dive_tab = DIVE_TABS[dive_log.dive_number]
+                # get dive tab for current dive_number
+                if dive_number in DIVE_TABS:
+                    dive_tab = DIVE_TABS[dive_number]
                     # print("getting dive_tab #" + str(dive_log.dive_number))
+
+                    player_frames = PLAYER_FRAMES[dive_number]
+                    player_labels = PLAYER_LABELS[dive_number]
+
                 else:
                     # if it doesnt exist then create a new dive tab
                     # create a frame for current dive
@@ -54,10 +73,16 @@ def render(dive_logs):
                     dive_tab.pack(fill="both", expand=True)
 
                     # add tab to all tabs
-                    DIVE_TABS[dive_log.dive_number] = dive_tab
+                    DIVE_TABS[dive_number] = dive_tab
+
+                    player_frames = {}
+                    player_labels: dict[int, dict[str, any]] = {}
+
+                    PLAYER_FRAMES[dive_number] = player_frames
+                    PLAYER_LABELS[dive_number] = player_labels
 
                     # add to tabController
-                    tabControl.add(dive_tab, text="Dive #" + str(dive_log.dive_number))
+                    tabControl.add(dive_tab, text="Dive #" + str(dive_number))
                     tabControl.pack(expand=1, fill="both")
 
             players = dive_log.get_players()
