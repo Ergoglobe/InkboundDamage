@@ -41,6 +41,10 @@ class DiveLog:
     dive_number: int
     combat_number: int
     turn_number: int
+    combats: dict
+    turns: dict
+
+    damageDF: pd.DataFrame
 
     def __init__(self, dive_number):
         logging.info("init DiveLog #" + str(dive_number))
@@ -49,19 +53,81 @@ class DiveLog:
         self.turn_number = 0
         self.players = {}
         self.entities = {}
+        self.combats = {}
+        self.turns = {}
+        self.damageDF = pd.DataFrame(
+            columns=[
+                "Combat",
+                "Turn",
+                "source_entity",
+                "target_entity",
+                "damage_amount",
+                "action_data",
+            ]
+        )
 
     def get_dive_number(self) -> int:
         return self.dive_number
 
-    def add_player(self, entity_handle, player_name):
-        logging.info(
-            "dive_number: " + str(self.dive_number) + " adding player: " + player_name
+    def add_player(self, line):
+        playermatch = re.search(
+            "(?:.*) (?:\d\d) (?:.) (?P<player_name>.*?) \(EntityHandle:(?P<entity_handle>.*?)\)",
+            line,
         )
-        player = Player(int(entity_handle), player_name)
-        self.players.update({entity_handle: player})
+
+        player_name = playermatch.group("player_name")
+        entity_handle = playermatch.group("entity_handle")
+
+        # if entity handle not a key in players
+        if int(entity_handle) not in self.players:
+            # create and add a player
+            player = Player(int(entity_handle), player_name)
+            self.players[int(entity_handle)] = player
+            logging.info(
+                "dive_number: "
+                + str(self.dive_number)
+                + " adding player: "
+                + player_name
+            )
+
+    def add_damage(self, line) -> None:
+        EventSystemLineParse = EventSystem(line)
+
+        target_entity = EventSystemLineParse.TargetUnitHandle
+        source_entity = EventSystemLineParse.SourceEntityHandle
+        damage_amount = EventSystemLineParse.DamageAmount
+        action_data = EventSystemLineParse.ActionData
+
+        new_damage_dict = {
+            "Combat": [int(self.combat_number)],
+            "Turn": [int(self.turn_number)],
+            "source_entity": [int(source_entity)],
+            "target_entity": [int(target_entity)],
+            "damage_amount": [int(damage_amount)],
+            "action_data": [action_data],
+        }
+
+        new_damage_df = pd.DataFrame.from_records(new_damage_dict)
+
+        logging.debug(str(new_damage_dict))
+        # print(new_damage)
+
+        self.damageDF = pd.concat([self.damageDF, new_damage_df], ignore_index=True)
+
+        pass
 
     def get_players(self) -> dict:
         return self.players
+
+    def OnCombatEnter(self) -> None:
+        self.combat_number += 1
+
+    def OnTurnStart(self) -> None:
+        self.turn_number += 1
+
+    def OnCombatExit(self) -> None:
+        self.turn_number = 0
+        pass
 
 
 class DiveLogsThread(threading.Thread):
@@ -94,27 +160,82 @@ class DiveLogsThread(threading.Thread):
         # the only reliable way to get player name from the logs
         # the alternative gives a hash value but doesnt connect to an entity afaik
         if "is playing ability" in line:
-            playermatch = re.search(
-                "(?:.*) (?:\d\d) (?:.) (?P<player_name>.*?) \(EntityHandle:(?P<entity_handle>.*?)\)",
-                line,
-            )
+            self.dive_log.add_player(line)
 
-            player_name = playermatch.group("player_name")
-            entity_handle = playermatch.group("entity_handle")
-
-            if int(entity_handle) not in self.dive_log.get_players():
-                self.dive_log.add_player(int(entity_handle), player_name)
+        if "broadcasting EventOnUnitDamaged" in line:
+            self.dive_log.add_damage(line)
 
         if "I Validating" in line:
-            # OnCombatEnter
-            # OnTurnStart
-            # OnCombatExit
-            pass
+            if "OnCombatEnter" in line:
+                self.dive_log.OnCombatEnter()
+            if "OnTurnStart" in line:
+                self.dive_log.OnTurnStart()
+            if "OnCombatExit" in line:
+                self.dive_log.OnCombatExit()
 
         if "I Client unit state" in line:
             # setting
+            if "Setting" in line:
+                settingHPmatch = re.search(
+                    "EntityHandle:(?P<entity_handle>\d*?)\). New hp: (?P<new_hp>\d*?)$",
+                    line,
+                )
+
+                entity_handle = settingHPmatch.group("entity_handle")
+                new_hp = settingHPmatch.group("new_hp")
+
+            if "healing" in line:
+                healingMatch = re.search(
+                    "EntityHandle:(?P<entity_handle>\d*?)\). Source-(?P<source>.*?) : Heal Amount-(?P<heal_amount>\d*?) : Ability- New hp: (?P<new_hp>\d*?)$",
+                    line,
+                )
+                entity_handle = healingMatch.group("entity_handle")
+                source = healingMatch.group("source")
+                new_hp = healingMatch.group("new_hp")
+
             # healing
             pass
+
+
+class EventSystem:
+    Timestamp: str
+    EventOn: str
+    WorldState: str
+    TargetUnitHandle: int
+    SourceEntityHandle: int
+    TargetUnitTeam: str  # can ignore
+    IsInActiveCombat: bool  # can ignore
+    DamageAmount: int
+    IsCriticalHit: bool
+    WasDodged: bool
+    ActionData: str  # janky
+    AbilityData: str
+    StatusEffectData: str
+    LootableData: str  # can ignore ( for now? )
+
+    def __init__(self, line):
+        re_eventsystem = re.search(
+            "(?P<Timestamp>.*?) \d\d I \[EventSystem\] broadcasting EventOn(?P<EventOn>.*?)-WorldState(?P<WorldState>.*?)-TargetUnitHandle:\(EntityHandle:(?P<TargetUnitHandle>\d*)\)-SourceEntityHandle:\(EntityHandle:(?P<SourceEntityHandle>\d*)\)-TargetUnitTeam:(?P<TargetUnitTeam>.*?)-IsInActiveCombat:(?P<IsInActiveCombat>.*?)-DamageAmount:(?P<DamageAmount>\d*?)-IsCriticalHit:(?P<IsCriticalHit>.*?)-WasDodged:(?P<WasDodged>.*?)-ActionData:ActionData-(?P<ActionData>.*?)-AbilityData:(?P<AbilityData>.*?)-StatusEffectData:(?P<StatusEffectData>.*?)-LootableData:(?P<LootableData>.*?)$",
+            line,
+        )
+
+        if re_eventsystem is None:
+            logging.info(line)
+
+        self.Timestamp = re_eventsystem.group("Timestamp")
+        self.EventOn = re_eventsystem.group("EventOn")
+        self.WorldState = re_eventsystem.group("WorldState")
+        self.TargetUnitHandle = re_eventsystem.group("TargetUnitHandle")
+        self.SourceEntityHandle = re_eventsystem.group("SourceEntityHandle")
+        self.TargetUnitTeam = re_eventsystem.group("TargetUnitTeam")
+        self.IsInActiveCombat = re_eventsystem.group("IsInActiveCombat")
+        self.DamageAmount = re_eventsystem.group("DamageAmount")
+        self.IsCriticalHit = re_eventsystem.group("IsCriticalHit")
+        self.WasDodged = re_eventsystem.group("WasDodged")
+        self.ActionData = re_eventsystem.group("ActionData")
+        self.AbilityData = re_eventsystem.group("AbilityData")
+        self.StatusEffectData = re_eventsystem.group("StatusEffectData")
+        self.LootableData = re_eventsystem.group("LootableData")
 
 
 if __name__ == "__main__":
