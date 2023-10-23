@@ -5,8 +5,8 @@ from typing import Any
 import re
 import sys
 import logging
-from FileOps import follow_log
 import pandas as pd
+import os
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,6 +19,9 @@ class Entity:
     id: int
     name: str
     hp: int
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Player(Entity):
@@ -98,6 +101,8 @@ class DiveLog:
         damage_amount = EventSystemLineParse.DamageAmount
         action_data = EventSystemLineParse.ActionData
 
+        # TODO add overkill damage compare damage amount to target_entity latest HP and get overkill
+
         new_damage_dict = {
             "Combat": [int(self.combat_number)],
             "Turn": [int(self.turn_number)],
@@ -114,8 +119,6 @@ class DiveLog:
 
         self.damageDF = pd.concat([self.damageDF, new_damage_df], ignore_index=True)
 
-        pass
-
     def get_players(self) -> dict:
         return self.players
 
@@ -129,6 +132,46 @@ class DiveLog:
         self.turn_number = 0
         pass
 
+    def printDataframe(self):
+        # print(self.damageDF)
+
+        logging.debug("Total Combats: %s" % str(self.damageDF["Combat"].max()))
+
+        for combat_number in range(1, self.damageDF["Combat"].max() + 1, 1):
+            combatdf = self.damageDF[self.damageDF["Combat"] == combat_number]
+            # print(combat1df)
+
+            logging.info("combat_number: " + str(combat_number))
+
+            for player in self.players:
+                combatdf = combatdf[combatdf["source_entity"] == player]
+                # print(combatdf)
+
+                action_data_totals = {}
+
+                for action_data in combatdf["action_data"].unique():
+                    action_data_sum = combatdf[combatdf["action_data"] == action_data][
+                        "damage_amount"
+                    ].sum()
+
+                    action_data_totals[action_data] = action_data_sum
+
+                # print("keys ")
+                # print(action_data_totals.keys())
+                # print("adt")
+                # print(action_data_totals)
+
+                totaldamage = sum(action_data_totals.values())
+
+                combat_data_percent = action_data_totals
+
+                for total in action_data_totals:
+                    combat_data_percent[total] = round(
+                        action_data_totals[total] / totaldamage * 100.00, 2
+                    )
+
+                # print(combat_data_percent)
+
 
 class DiveLogsThread(threading.Thread):
     dive_logs: list
@@ -141,8 +184,25 @@ class DiveLogsThread(threading.Thread):
         self.dive_number = 0
 
     def run(self):
-        for line in follow_log():
+        for line in self.follow_log():
             self.parse_line(line)
+
+    def follow_log(self):
+        file = open(
+            os.environ["USERPROFILE"]
+            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile.log",
+            "r",
+        )
+        while True:
+            # read last line of file
+            next_line = file.readline()
+
+            if not next_line:
+                self.dive_log.printDataframe()
+                time.sleep(10)
+                continue
+
+            yield next_line
 
     def parse_line(self, line):
         # maybe in the future care about solo vs not solo but for now this is fine
@@ -186,7 +246,7 @@ class DiveLogsThread(threading.Thread):
 
             if "healing" in line:
                 healingMatch = re.search(
-                    "EntityHandle:(?P<entity_handle>\d*?)\). Source-(?P<source>.*?) : Heal Amount-(?P<heal_amount>\d*?) : Ability- New hp: (?P<new_hp>\d*?)$",
+                    r".*EntityHandle:(?P<entity_handle>\d*?)\). Source-(?P<source>.*?) : Heal Amount-(?P<heal_amount>\d*?) : Ability-(.*?) New hp: (?P<new_hp>\d*)",
                     line,
                 )
                 entity_handle = healingMatch.group("entity_handle")
