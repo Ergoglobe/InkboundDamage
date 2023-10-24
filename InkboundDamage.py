@@ -153,6 +153,16 @@ class DiveLog:
 
         return action_data_totals
 
+    def actionDataTotalsPercent(self, action_data_totals: pd.DataFrame) -> dict:
+        totaldamage = sum(action_data_totals.values())
+
+        action_data_totals_percent = {}
+
+        for total in action_data_totals:
+            action_data_totals_percent[total] = round(
+                action_data_totals[total] / totaldamage * 100.00, 2
+            )
+
     def printDataframe(self):
         # print(self.damageDF)
 
@@ -170,18 +180,11 @@ class DiveLog:
 
                 action_data_totals = self.actionDataTotals(combat_for_player_df)
 
-                totaldamage = sum(action_data_totals.values())
+                combat_data_percent = self.actionDataTotalsPercent(action_data_totals)
 
-                combat_data_percent = action_data_totals
-
-                for total in action_data_totals:
-                    combat_data_percent[total] = round(
-                        action_data_totals[total] / totaldamage * 100.00, 2
-                    )
-
-                logging.info(
-                    "combat_data_percent\n" + pprint.pformat(combat_data_percent) + "\n"
-                )
+                # logging.info(
+                #     "combat_data_percent\n" + pprint.pformat(combat_data_percent) + "\n"
+                # )
 
 
 class DiveLogsThread(threading.Thread):
