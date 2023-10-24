@@ -196,7 +196,7 @@ class DiveLog:
 
 
 # TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
-class HWKivyApp(App):
+class KivyApp(App):
     # Function that returns
     # the root widget
     def build(self):
@@ -214,7 +214,7 @@ class DiveLogsThread(threading.Thread):
         threading.Thread.__init__(self)
         self.dive_logs = []
         self.dive_number = 0
-        HWKivyApp().run()
+        KivyApp().run()
 
     def run(self):
         for line in self.follow_log():
