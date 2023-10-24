@@ -211,7 +211,7 @@ class DiveLogsThread(threading.Thread):
         threading.Thread.__init__(self)
         self.dive_logs = []
         self.dive_number = 0
-        ThreadedApp().run()
+        # ThreadedApp().run()
 
     def run(self):
         for line in self.follow_log():
@@ -329,7 +329,9 @@ class EventSystem:
 
 
 if __name__ == "__main__":
-    DiveLogsT = DiveLogsThread()
-    DiveLogsT.start()
+    # DiveLogsT = DiveLogsThread()
+    # DiveLogsT.start()
+
+    ThreadedApp().run()
 
     SystemExit()
