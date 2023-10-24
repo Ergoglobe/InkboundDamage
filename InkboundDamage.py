@@ -8,6 +8,8 @@ import logging
 import pandas as pd
 import os
 
+import pprint
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -132,6 +134,25 @@ class DiveLog:
         self.turn_number = 0
         pass
 
+    # with given dataframe sum damage for each unique action_data
+    def actionDataTotals(self, combat_for_player_df: pd.DataFrame) -> dict:
+        action_data_totals = {}
+
+        for action_data in combat_for_player_df["action_data"].unique():
+            action_data_sum = combat_for_player_df[
+                combat_for_player_df["action_data"] == action_data
+            ]["damage_amount"].sum()
+
+            action_data_totals[action_data] = action_data_sum
+
+        # DEBUG
+        # print("keys ")
+        # print(action_data_totals.keys())
+        # print("adt")
+        # print(action_data_totals)
+
+        return action_data_totals
+
     def printDataframe(self):
         # print(self.damageDF)
 
@@ -144,22 +165,10 @@ class DiveLog:
             logging.info("combat_number: " + str(combat_number))
 
             for player in self.players:
-                combatdf = combatdf[combatdf["source_entity"] == player]
+                combat_for_player_df = combatdf[combatdf["source_entity"] == player]
                 # print(combatdf)
 
-                action_data_totals = {}
-
-                for action_data in combatdf["action_data"].unique():
-                    action_data_sum = combatdf[combatdf["action_data"] == action_data][
-                        "damage_amount"
-                    ].sum()
-
-                    action_data_totals[action_data] = action_data_sum
-
-                # print("keys ")
-                # print(action_data_totals.keys())
-                # print("adt")
-                # print(action_data_totals)
+                action_data_totals = self.actionDataTotals(combat_for_player_df)
 
                 totaldamage = sum(action_data_totals.values())
 
@@ -170,7 +179,9 @@ class DiveLog:
                         action_data_totals[total] / totaldamage * 100.00, 2
                     )
 
-                # print(combat_data_percent)
+                logging.info(
+                    "combat_data_percent\n" + pprint.pformat(combat_data_percent) + "\n"
+                )
 
 
 class DiveLogsThread(threading.Thread):
