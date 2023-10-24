@@ -10,13 +10,8 @@ import os
 import pprint
 
 
-import kivy
-
-kivy.require("1.11.1")
-
-from kivy.app import App
-from kivy.uix.label import Label
-
+from kivymd.app import MDApp
+from kivymd.uix.label import MDLabel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -196,13 +191,15 @@ class DiveLog:
 
 
 # TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
-class KivyApp(App):
-    # Function that returns
-    # the root widget
+class ThreadedApp(MDApp):
+    def on_stop(self):
+        # The Kivy event loop is about to stop, set a stop signal;
+        # otherwise the app window will close, but the Python process will
+        # keep running until all secondary threads exit.
+        self.root.stop.set()
+
     def build(self):
-        # Label with text Hello World is
-        # returned as root widget
-        return Label(text="Hello World !")
+        return MDLabel(text="Hello World !", halign="center")
 
 
 class DiveLogsThread(threading.Thread):
@@ -214,7 +211,7 @@ class DiveLogsThread(threading.Thread):
         threading.Thread.__init__(self)
         self.dive_logs = []
         self.dive_number = 0
-        KivyApp().run()
+        ThreadedApp().run()
 
     def run(self):
         for line in self.follow_log():
