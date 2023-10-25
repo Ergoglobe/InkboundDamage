@@ -13,6 +13,11 @@ import pprint
 from kivymd.app import MDApp
 from kivymd.uix.label import MDLabel
 
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.screenmanager import MDScreenManager
+
+from kivymd.uix.menu import MDDropdownMenu
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -190,6 +195,18 @@ class DiveLog:
                 # )
 
 
+class DiveMDScreen(MDScreen):
+    Screen: MDScreen
+
+    def __init__(self, name) -> None:
+        self.Screen = MDScreen()
+        self.Screen.name = name
+        self.Screen.add_widget(MDLabel(text="Dive #" + name, halign="center"))
+
+    def getScreen(self) -> MDScreen:
+        return self.Screen
+
+
 # TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
 class ThreadedApp(MDApp):
     def on_stop(self):
@@ -199,7 +216,20 @@ class ThreadedApp(MDApp):
         self.root.stop.set()
 
     def build(self):
-        return MDLabel(text="Hello World !", halign="center")
+        RootMDScreen = MDScreen()
+
+        menu_items = [{"text": "Dive #1"}]
+
+        RootMDScreen.add_widget(MDDropdownMenu(items=menu_items, position="center"))
+        # Screen manager that holds the navigation rail which each display an individual dive
+        DiveMDScreenManager = MDScreenManager()
+
+        # RootMDScreen.add_widget(DiveMDScreenManager)
+
+        # DiveMDScreenManager.add_widget(DiveMDScreen("1").getScreen())
+
+        return RootMDScreen
+        # MDLabel(text="Hello World !", halign="center")
 
 
 class DiveLogsThread(threading.Thread):
@@ -329,8 +359,7 @@ class EventSystem:
 
 
 if __name__ == "__main__":
-    # DiveLogsT = DiveLogsThread()
-    # DiveLogsT.start()
+    # DiveLogsThread().start()
 
     ThreadedApp().run()
 
