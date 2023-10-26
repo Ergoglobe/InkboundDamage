@@ -7,16 +7,6 @@ from kivymd.uix.button import MDFlatButton
 
 from kivymd.uix.screen import MDScreen
 
-KV = """
-MDScreen:
-
-    MDRaisedButton:
-        id: button2
-        text: "PRESS ME"
-        pos_hint: {"center_x": .5, "center_y": .5}
-        on_release: app.menu.open()
-"""
-
 
 class Test(MDApp):
     def __init__(self, **kwargs):
@@ -27,7 +17,7 @@ class Test(MDApp):
             {
                 "text": f"Item {i}",
                 "viewclass": "OneLineListItem",
-                "on_release": lambda x=f"Item {i}": self.menu_callback(x),
+                "on_release": lambda x=f"Dive {i}": self.menu_callback(x),
             }
             for i in range(5)
         ]

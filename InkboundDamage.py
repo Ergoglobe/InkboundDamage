@@ -17,6 +17,8 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import MDScreenManager
 
 from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.button import MDFlatButton
+from kivymd.uix.boxlayout import BoxLayout
 
 logging.basicConfig(
     level=logging.INFO,
@@ -203,8 +205,49 @@ class DiveMDScreen(MDScreen):
         self.Screen.name = name
         self.Screen.add_widget(MDLabel(text="Dive #" + name, halign="center"))
 
-    def getScreen(self) -> MDScreen:
+    def get_screen(self) -> MDScreen:
         return self.Screen
+
+
+# this class holds the button and the menu itself
+class DiveNumberMDDropdownMenu:
+    menu_button: MDFlatButton
+    dive_number_dropdown_menu: MDDropdownMenu
+
+    def __init__(self) -> None:
+        self.menu_button = MDFlatButton(
+            id="button", text="Choose Dive", size_hint=(1, 0.05)
+        )
+
+        self.dive_number_dropdown_menu = MDDropdownMenu(
+            caller=self.menu_button,
+            items=[],
+            width_mult=4,
+        )
+
+        self.menu_button.on_release = self.dive_number_dropdown_menu.open
+
+    def get_menu_button(self) -> MDFlatButton:
+        return self.menu_button
+
+    def get_dropdown_menu(self) -> MDDropdownMenu:
+        return self.dive_number_dropdown_menu
+
+    def menu_callback(self, dive_number: str):
+        print("Change screen to dive# " + dive_number)
+
+    def add_dive_number_to_dropdown_menu(self, dive_number: int):
+        new_menu_items: list = self.dive_number_dropdown_menu.items
+
+        new_menu_items.append(
+            {
+                "text": f"Dive #1qaz'{str(dive_number)}",
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x=f"{str(dive_number)}": self.menu_callback(x),
+            }
+        )
+
+        self.dive_number_dropdown_menu.items = new_menu_items
 
 
 # TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
@@ -216,11 +259,16 @@ class ThreadedApp(MDApp):
         self.root.stop.set()
 
     def build(self):
-        RootMDScreen = MDScreen()
+        RootMDScreen = BoxLayout(orientation="vertical")
 
-        menu_items = [{"text": "Dive #1"}]
+        # TODO: Add dropdown to select dive
 
-        RootMDScreen.add_widget(MDDropdownMenu(items=menu_items, position="center"))
+        dive_number_dropdown_menu = DiveNumberMDDropdownMenu()
+
+        RootMDScreen.add_widget(dive_number_dropdown_menu.get_menu_button())
+
+        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(1)
+
         # Screen manager that holds the navigation rail which each display an individual dive
         DiveMDScreenManager = MDScreenManager()
 
@@ -229,7 +277,6 @@ class ThreadedApp(MDApp):
         # DiveMDScreenManager.add_widget(DiveMDScreen("1").getScreen())
 
         return RootMDScreen
-        # MDLabel(text="Hello World !", halign="center")
 
 
 class DiveLogsThread(threading.Thread):
