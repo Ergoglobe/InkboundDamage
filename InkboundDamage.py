@@ -170,7 +170,8 @@ class DiveLog:
 
         for total in action_data_totals:
             action_data_totals_percent[total] = round(
-                action_data_totals[total] / totaldamage * 100.00, 2
+                action_data_totals[total] / totaldamage * 100.00,
+                2,  # percentage to 2 decimal places
             )
 
     def printDataframe(self):
@@ -197,16 +198,21 @@ class DiveLog:
                 # )
 
 
-class DiveMDScreen:
-    Screen: MDScreen
+# class DiveMDScreen:
+#     Screen: MDScreen
 
-    def __init__(self, name) -> None:
-        self.Screen = MDScreen()
-        self.Screen.name = name
-        self.Screen.add_widget(MDLabel(text="Dive #" + name, halign="center"))
+#     def __init__(self, name) -> None:
+#         self.Screen = MDScreen()
+#         self.Screen.name = name
+#         self.Screen.add_widget(MDLabel(text="Dive #" + name, halign="center"))
 
-    def get_screen(self) -> MDScreen:
-        return self.Screen
+#     def get_screen(self) -> MDScreen:
+#         return self.Screen
+
+
+class DiveMDScreen(MDScreen):
+    def add_dive_number_label(self) -> None:
+        self.add_widget(MDLabel(text="Dive #" + self.name, halign="center"))
 
 
 # this class holds the button and the menu itself
@@ -269,17 +275,14 @@ class ThreadedApp(MDApp):
         # TODO: Add dropdown to select dive
         DiveMDScreenManager = ScreenManager()
 
-        DiveMDScreenManager.add_widget(DiveMDScreen("1").get_screen())
-        DiveMDScreenManager.add_widget(DiveMDScreen("2").get_screen())
-        DiveMDScreenManager.add_widget(DiveMDScreen("3").get_screen())
-
         dive_number_dropdown_menu = DiveNumberMDDropdownMenu(DiveMDScreenManager)
 
         RootMDScreen.add_widget(dive_number_dropdown_menu.get_menu_button())
 
-        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(1)
-        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(2)
-        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(3)
+        for dive_number in range(1, 4, 1):
+            DiveMDScreenManager.add_widget(DiveMDScreen(name=str(dive_number)))
+            DiveMDScreenManager.get_screen(str(dive_number)).add_dive_number_label()
+            dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
         # Screen manager that holds the navigation rail which each display an individual dive
 
