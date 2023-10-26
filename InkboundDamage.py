@@ -197,7 +197,7 @@ class DiveLog:
                 # )
 
 
-class DiveMDScreen(MDScreen):
+class DiveMDScreen:
     Screen: MDScreen
 
     def __init__(self, name) -> None:
@@ -213,8 +213,9 @@ class DiveMDScreen(MDScreen):
 class DiveNumberMDDropdownMenu:
     menu_button: MDFlatButton
     dive_number_dropdown_menu: MDDropdownMenu
+    dive_screen_manager: MDScreenManager
 
-    def __init__(self) -> None:
+    def __init__(self, dive_screen_manager) -> None:
         self.menu_button = MDFlatButton(
             id="button", text="Choose Dive", size_hint=(1, 0.05)
         )
@@ -227,6 +228,9 @@ class DiveNumberMDDropdownMenu:
 
         self.menu_button.on_release = self.dive_number_dropdown_menu.open
 
+        # for callback to change screens we need to have the screen manager here
+        self.dive_screen_manager = dive_screen_manager
+
     def get_menu_button(self) -> MDFlatButton:
         return self.menu_button
 
@@ -235,13 +239,14 @@ class DiveNumberMDDropdownMenu:
 
     def menu_callback(self, dive_number: str):
         print("Change screen to dive# " + dive_number)
+        self.dive_screen_manager.get_screen(dive_number)
 
     def add_dive_number_to_dropdown_menu(self, dive_number: int):
         new_menu_items: list = self.dive_number_dropdown_menu.items
 
         new_menu_items.append(
             {
-                "text": f"Dive #1qaz'{str(dive_number)}",
+                "text": f"Dive #'{str(dive_number)}",
                 "viewclass": "OneLineListItem",
                 "on_release": lambda x=f"{str(dive_number)}": self.menu_callback(x),
             }
@@ -262,19 +267,25 @@ class ThreadedApp(MDApp):
         RootMDScreen = BoxLayout(orientation="vertical")
 
         # TODO: Add dropdown to select dive
+        DiveMDScreenManager = MDScreenManager()
 
-        dive_number_dropdown_menu = DiveNumberMDDropdownMenu()
+        DiveMDScreenManager.add_widget(DiveMDScreen("1").get_screen())
+        DiveMDScreenManager.add_widget(DiveMDScreen("2").get_screen())
+        DiveMDScreenManager.add_widget(DiveMDScreen("3").get_screen())
+
+        dive_number_dropdown_menu = DiveNumberMDDropdownMenu(DiveMDScreenManager)
 
         RootMDScreen.add_widget(dive_number_dropdown_menu.get_menu_button())
 
         dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(1)
+        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(2)
+        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(3)
 
         # Screen manager that holds the navigation rail which each display an individual dive
-        DiveMDScreenManager = MDScreenManager()
 
-        # RootMDScreen.add_widget(DiveMDScreenManager)
+        RootMDScreen.add_widget(DiveMDScreenManager)
 
-        # DiveMDScreenManager.add_widget(DiveMDScreen("1").getScreen())
+        # DiveMDScreenManager.get_screen("1")
 
         return RootMDScreen
 
