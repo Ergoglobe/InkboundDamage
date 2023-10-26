@@ -14,7 +14,7 @@ from kivymd.app import MDApp
 from kivymd.uix.label import MDLabel
 
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.screenmanager import MDScreenManager
+from kivymd.uix.screenmanager import ScreenManager
 
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.button import MDFlatButton
@@ -213,7 +213,7 @@ class DiveMDScreen:
 class DiveNumberMDDropdownMenu:
     menu_button: MDFlatButton
     dive_number_dropdown_menu: MDDropdownMenu
-    dive_screen_manager: MDScreenManager
+    dive_screen_manager: ScreenManager
 
     def __init__(self, dive_screen_manager) -> None:
         self.menu_button = MDFlatButton(
@@ -239,14 +239,14 @@ class DiveNumberMDDropdownMenu:
 
     def menu_callback(self, dive_number: str):
         print("Change screen to dive# " + dive_number)
-        self.dive_screen_manager.get_screen(dive_number)
+        self.dive_screen_manager.current = dive_number
 
     def add_dive_number_to_dropdown_menu(self, dive_number: int):
         new_menu_items: list = self.dive_number_dropdown_menu.items
 
         new_menu_items.append(
             {
-                "text": f"Dive #'{str(dive_number)}",
+                "text": f"Dive #{str(dive_number)}",
                 "viewclass": "OneLineListItem",
                 "on_release": lambda x=f"{str(dive_number)}": self.menu_callback(x),
             }
@@ -267,7 +267,7 @@ class ThreadedApp(MDApp):
         RootMDScreen = BoxLayout(orientation="vertical")
 
         # TODO: Add dropdown to select dive
-        DiveMDScreenManager = MDScreenManager()
+        DiveMDScreenManager = ScreenManager()
 
         DiveMDScreenManager.add_widget(DiveMDScreen("1").get_screen())
         DiveMDScreenManager.add_widget(DiveMDScreen("2").get_screen())
@@ -284,8 +284,6 @@ class ThreadedApp(MDApp):
         # Screen manager that holds the navigation rail which each display an individual dive
 
         RootMDScreen.add_widget(DiveMDScreenManager)
-
-        # DiveMDScreenManager.get_screen("1")
 
         return RootMDScreen
 
