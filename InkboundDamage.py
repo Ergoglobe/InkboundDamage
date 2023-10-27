@@ -270,25 +270,25 @@ class ThreadedApp(MDApp):
         self.root.stop.set()
 
     def build(self):
-        RootMDScreen = BoxLayout(orientation="vertical")
+        root_md_screen = BoxLayout(orientation="vertical")
 
-        # TODO: Add dropdown to select dive
-        DiveMDScreenManager = ScreenManager()
+        dive_md_screenmanager = ScreenManager()
 
-        dive_number_dropdown_menu = DiveNumberMDDropdownMenu(DiveMDScreenManager)
+        dive_number_dropdown_menu = DiveNumberMDDropdownMenu(dive_md_screenmanager)
 
-        RootMDScreen.add_widget(dive_number_dropdown_menu.get_menu_button())
+        root_md_screen.add_widget(dive_number_dropdown_menu.get_menu_button())
 
+        ## TODO: Remove this, debugging the dropdown
         for dive_number in range(1, 4, 1):
-            DiveMDScreenManager.add_widget(DiveMDScreen(name=str(dive_number)))
-            DiveMDScreenManager.get_screen(str(dive_number)).add_dive_number_label()
+            dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
+            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
             dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
         # Screen manager that holds the navigation rail which each display an individual dive
 
-        RootMDScreen.add_widget(DiveMDScreenManager)
+        root_md_screen.add_widget(dive_md_screenmanager)
 
-        return RootMDScreen
+        return root_md_screen
 
 
 class DiveLogsThread(threading.Thread):
@@ -356,7 +356,7 @@ class DiveLogsThread(threading.Thread):
             # setting
             if "Setting" in line:
                 settingHPmatch = re.search(
-                    "EntityHandle:(?P<entity_handle>\d*?)\). New hp: (?P<new_hp>\d*?)$",
+                    r"EntityHandle:(?P<entity_handle>\d*?)\). New hp: (?P<new_hp>\d*?)$",
                     line,
                 )
 
@@ -373,7 +373,6 @@ class DiveLogsThread(threading.Thread):
                 new_hp = healingMatch.group("new_hp")
 
             # healing
-            pass
 
 
 class EventSystem:
@@ -394,7 +393,7 @@ class EventSystem:
 
     def __init__(self, line):
         re_eventsystem = re.search(
-            "(?P<Timestamp>.*?) \d\d I \[EventSystem\] broadcasting EventOn(?P<EventOn>.*?)-WorldState(?P<WorldState>.*?)-TargetUnitHandle:\(EntityHandle:(?P<TargetUnitHandle>\d*)\)-SourceEntityHandle:\(EntityHandle:(?P<SourceEntityHandle>\d*)\)-TargetUnitTeam:(?P<TargetUnitTeam>.*?)-IsInActiveCombat:(?P<IsInActiveCombat>.*?)-DamageAmount:(?P<DamageAmount>\d*?)-IsCriticalHit:(?P<IsCriticalHit>.*?)-WasDodged:(?P<WasDodged>.*?)-ActionData:ActionData-(?P<ActionData>.*?)-AbilityData:(?P<AbilityData>.*?)-StatusEffectData:(?P<StatusEffectData>.*?)-LootableData:(?P<LootableData>.*?)$",
+            r"(?P<Timestamp>.*?) \d\d I \[EventSystem\] broadcasting EventOn(?P<EventOn>.*?)-WorldState(?P<WorldState>.*?)-TargetUnitHandle:\(EntityHandle:(?P<TargetUnitHandle>\d*)\)-SourceEntityHandle:\(EntityHandle:(?P<SourceEntityHandle>\d*)\)-TargetUnitTeam:(?P<TargetUnitTeam>.*?)-IsInActiveCombat:(?P<IsInActiveCombat>.*?)-DamageAmount:(?P<DamageAmount>\d*?)-IsCriticalHit:(?P<IsCriticalHit>.*?)-WasDodged:(?P<WasDodged>.*?)-ActionData:ActionData-(?P<ActionData>.*?)-AbilityData:(?P<AbilityData>.*?)-StatusEffectData:(?P<StatusEffectData>.*?)-LootableData:(?P<LootableData>.*?)$",
             line,
         )
 
@@ -421,5 +420,3 @@ if __name__ == "__main__":
     # DiveLogsThread().start()
 
     ThreadedApp().run()
-
-    SystemExit()
