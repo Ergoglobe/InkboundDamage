@@ -1,12 +1,9 @@
-from collections.abc import Callable, Iterable, Mapping
+import os
 import threading
 import time
-from typing import Any
 import re
-import sys
 import logging
 import pandas as pd
-import os
 import pprint
 
 
@@ -59,7 +56,7 @@ class DiveLog:
     combats: dict
     turns: dict
 
-    damageDF: pd.DataFrame
+    damage_df: pd.DataFrame
 
     def __init__(self, dive_number):
         logging.info("init DiveLog #" + str(dive_number))
@@ -70,7 +67,7 @@ class DiveLog:
         self.entities = {}
         self.combats = {}
         self.turns = {}
-        self.damageDF = pd.DataFrame(
+        self.damage_df = pd.DataFrame(
             columns=[
                 "Combat",
                 "Turn",
@@ -86,7 +83,7 @@ class DiveLog:
 
     def add_player(self, line):
         playermatch = re.search(
-            "(?:.*) (?:\d\d) (?:.) (?P<player_name>.*?) \(EntityHandle:(?P<entity_handle>.*?)\)",
+            r"(?:.*) (?:\d\d) (?:.) (?P<player_name>.*?) \(EntityHandle:(?P<entity_handle>.*?)\)",
             line,
         )
 
@@ -129,7 +126,7 @@ class DiveLog:
         logging.debug(str(new_damage_dict))
         # print(new_damage)
 
-        self.damageDF = pd.concat([self.damageDF, new_damage_df], ignore_index=True)
+        self.damage_df = pd.concat([self.damage_df, new_damage_df], ignore_index=True)
 
     def get_players(self) -> dict:
         return self.players
@@ -142,10 +139,9 @@ class DiveLog:
 
     def OnCombatExit(self) -> None:
         self.turn_number = 0
-        pass
 
     # with given dataframe sum damage for each unique action_data
-    def actionDataTotals(self, combat_for_player_df: pd.DataFrame) -> dict:
+    def action_data_totals(self, combat_for_player_df: pd.DataFrame) -> dict:
         action_data_totals = {}
 
         for action_data in combat_for_player_df["action_data"].unique():
@@ -159,11 +155,11 @@ class DiveLog:
         # print("keys ")
         # print(action_data_totals.keys())
         # print("adt")
-        # print(action_data_totals)
+        # print(action_data_total2wsx1qaz's)
 
         return action_data_totals
 
-    def actionDataTotalsPercent(self, action_data_totals: pd.DataFrame) -> dict:
+    def action_data_totals_percent(self, action_data_totals: pd.DataFrame) -> dict:
         totaldamage = sum(action_data_totals.values())
 
         action_data_totals_percent = {}
@@ -174,13 +170,15 @@ class DiveLog:
                 2,  # percentage to 2 decimal places
             )
 
-    def printDataframe(self):
+        return action_data_totals_percent
+
+    def print_data_frame(self):
         # print(self.damageDF)
 
-        logging.debug("Total Combats: %s" % str(self.damageDF["Combat"].max()))
+        logging.debug("Total Combats: %s" % str(self.damage_df["Combat"].max()))
 
-        for combat_number in range(1, self.damageDF["Combat"].max() + 1, 1):
-            combatdf = self.damageDF[self.damageDF["Combat"] == combat_number]
+        for combat_number in range(1, self.damage_df["Combat"].max() + 1, 1):
+            combatdf = self.damage_df[self.damage_df["Combat"] == combat_number]
             # print(combat1df)
 
             logging.info("combat_number: " + str(combat_number))
@@ -189,9 +187,11 @@ class DiveLog:
                 combat_for_player_df = combatdf[combatdf["source_entity"] == player]
                 # print(combatdf)
 
-                action_data_totals = self.actionDataTotals(combat_for_player_df)
+                action_data_totals = self.action_data_totals(combat_for_player_df)
 
-                combat_data_percent = self.actionDataTotalsPercent(action_data_totals)
+                combat_data_percent = self.action_data_totals_percent(
+                    action_data_totals
+                )
 
                 # logging.info(
                 #     "combat_data_percent\n" + pprint.pformat(combat_data_percent) + "\n"
@@ -317,7 +317,7 @@ class DiveLogsThread(threading.Thread):
             next_line = file.readline()
 
             if not next_line:
-                self.dive_log.printDataframe()
+                self.dive_log.print_data_frame()
                 time.sleep(10)
                 continue
 

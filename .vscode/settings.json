@@ -4,9 +4,11 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "[python]": {
       "editor.defaultFormatter": "ms-python.black-formatter"
     },
-    "python.formatting.provider": "none"
+    "python.analysis.typeCheckingMode": "off",
+    "materialkv.pythonFile": "main.py",
+
 }
