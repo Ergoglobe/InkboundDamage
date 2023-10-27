@@ -355,22 +355,22 @@ class DiveLogsThread(threading.Thread):
         if "I Client unit state" in line:
             # setting
             if "Setting" in line:
-                settingHPmatch = re.search(
+                setting_hp_match = re.search(
                     r"EntityHandle:(?P<entity_handle>\d*?)\). New hp: (?P<new_hp>\d*?)$",
                     line,
                 )
 
-                entity_handle = settingHPmatch.group("entity_handle")
-                new_hp = settingHPmatch.group("new_hp")
+                entity_handle = setting_hp_match.group("entity_handle")
+                new_hp = setting_hp_match.group("new_hp")
 
             if "healing" in line:
-                healingMatch = re.search(
+                healing_match = re.search(
                     r".*EntityHandle:(?P<entity_handle>\d*?)\). Source-(?P<source>.*?) : Heal Amount-(?P<heal_amount>\d*?) : Ability-(.*?) New hp: (?P<new_hp>\d*)",
                     line,
                 )
-                entity_handle = healingMatch.group("entity_handle")
-                source = healingMatch.group("source")
-                new_hp = healingMatch.group("new_hp")
+                entity_handle = healing_match.group("entity_handle")
+                source = healing_match.group("source")
+                new_hp = healing_match.group("new_hp")
 
             # healing
 
