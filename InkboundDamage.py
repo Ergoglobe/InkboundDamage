@@ -271,6 +271,7 @@ class DiveLogsThread(threading.Thread):
     dive_log: DiveLog
     dive_number: int
     log_file: io.TextIOWrapper
+    log_file_fully_loaded: bool
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -285,11 +286,25 @@ class DiveLogsThread(threading.Thread):
             buffering=1000000,
         )
 
-    def run(self):
-        # for line in self.follow_log():
-        #     self.parse_line(line)
+        self.log_file_fully_loaded = False
+        # self.parse_file_until_end()
 
-        self.parse_file_until_end()
+    # If next_line exists parse it, otherwise wait
+    def run(self):
+        while True:
+            next_line = self.log_file.readline()
+
+            if not next_line:
+                logging.info("Reached end of logfile.log")
+                # self.dive_log.print_data_frame()
+                self.log_file_fully_loaded = True
+                time.sleep(10)
+                continue
+            else:
+                self.log_file_fully_loaded = False
+                self.parse_line(next_line)
+
+            # TODO update gui here
 
     def parse_file_until_end(self) -> str:
         for next_line in self.follow_log():
@@ -315,12 +330,6 @@ class DiveLogsThread(threading.Thread):
             yield next_line
 
     def parse_line(self, line: str):
-        if "HandleRequest" in line:
-            return
-
-        if "EventOnUnitStatusEffectStacksAdded" in line:
-            return
-
         # maybe in the future care about solo vs not solo but for now this is fine
         if "Party run start triggered" in line:
             self.dive_number += 1
@@ -379,6 +388,9 @@ class ThreadedApp(MDApp):
         # keep running until all secondary threads exit.
         self.root.stop.set()
 
+    def my_callback(self, *args):
+        print("TEST")
+
     def build(self):
         root_md_screen = BoxLayout(orientation="vertical")
 
@@ -388,15 +400,14 @@ class ThreadedApp(MDApp):
 
         root_md_screen.add_widget(dive_number_dropdown_menu.get_menu_button())
 
-        # Screen manager that holds the navigation rail which each display an individual dive
+        root_md_screen.add_widget(dive_md_screenmanager)
 
+        Clock.schedule_once(self.my_callback, 1)
         ## TODO: Remove this, debugging the dropdown
         # for dive_number in range(1, 4, 1):
         #     dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
         #     dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
         #     dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
-
-        root_md_screen.add_widget(dive_md_screenmanager)
 
         return root_md_screen
 
