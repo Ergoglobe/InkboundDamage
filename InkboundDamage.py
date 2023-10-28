@@ -1,21 +1,26 @@
 import os
+import io
 import threading
 import time
 import re
 import logging
 import pandas as pd
+
 import pprint
 
 
 from kivymd.app import MDApp
-from kivymd.uix.label import MDLabel
 
+from kivy.clock import Clock, mainthread
+
+from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import ScreenManager
-
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.boxlayout import BoxLayout
+
+from event_system import EventSystem
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,7 +64,7 @@ class DiveLog:
     damage_df: pd.DataFrame
 
     def __init__(self, dive_number):
-        logging.info("init DiveLog #" + str(dive_number))
+        logging.info("init DiveLog #%i", dive_number)
         self.dive_number = dive_number
         self.combat_number = 0
         self.turn_number = 0
@@ -103,12 +108,12 @@ class DiveLog:
             )
 
     def add_damage(self, line) -> None:
-        EventSystemLineParse = EventSystem(line)
+        event_system_line_parse = EventSystem(line)
 
-        target_entity = EventSystemLineParse.TargetUnitHandle
-        source_entity = EventSystemLineParse.SourceEntityHandle
-        damage_amount = EventSystemLineParse.DamageAmount
-        action_data = EventSystemLineParse.ActionData
+        target_entity = event_system_line_parse.TargetUnitHandle
+        source_entity = event_system_line_parse.SourceEntityHandle
+        damage_amount = event_system_line_parse.DamageAmount
+        action_data = event_system_line_parse.ActionData
 
         # TODO add overkill damage compare damage amount to target_entity latest HP and get overkill
 
@@ -123,7 +128,7 @@ class DiveLog:
 
         new_damage_df = pd.DataFrame.from_records(new_damage_dict)
 
-        logging.debug(str(new_damage_dict))
+        # logging.debug(str(new_damage_dict))
         # print(new_damage)
 
         self.damage_df = pd.concat([self.damage_df, new_damage_df], ignore_index=True)
@@ -131,13 +136,13 @@ class DiveLog:
     def get_players(self) -> dict:
         return self.players
 
-    def OnCombatEnter(self) -> None:
+    def on_combat_enter(self) -> None:
         self.combat_number += 1
 
-    def OnTurnStart(self) -> None:
+    def on_turn_start(self) -> None:
         self.turn_number += 1
 
-    def OnCombatExit(self) -> None:
+    def on_combat_exit(self) -> None:
         self.turn_number = 0
 
     # with given dataframe sum damage for each unique action_data
@@ -175,13 +180,13 @@ class DiveLog:
     def print_data_frame(self):
         # print(self.damageDF)
 
-        logging.debug("Total Combats: %s" % str(self.damage_df["Combat"].max()))
+        # logging.debug("Total Combats: %s", self.damage_df["Combat"].max())
 
         for combat_number in range(1, self.damage_df["Combat"].max() + 1, 1):
             combatdf = self.damage_df[self.damage_df["Combat"] == combat_number]
             # print(combat1df)
 
-            logging.info("combat_number: " + str(combat_number))
+            # logging.info("combat_number: %s", combat_number)
 
             for player in self.players:
                 combat_for_player_df = combatdf[combatdf["source_entity"] == player]
@@ -261,60 +266,46 @@ class DiveNumberMDDropdownMenu:
         self.dive_number_dropdown_menu.items = new_menu_items
 
 
-# TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
-class ThreadedApp(MDApp):
-    def on_stop(self):
-        # The Kivy event loop is about to stop, set a stop signal;
-        # otherwise the app window will close, but the Python process will
-        # keep running until all secondary threads exit.
-        self.root.stop.set()
-
-    def build(self):
-        root_md_screen = BoxLayout(orientation="vertical")
-
-        dive_md_screenmanager = ScreenManager()
-
-        dive_number_dropdown_menu = DiveNumberMDDropdownMenu(dive_md_screenmanager)
-
-        root_md_screen.add_widget(dive_number_dropdown_menu.get_menu_button())
-
-        ## TODO: Remove this, debugging the dropdown
-        for dive_number in range(1, 4, 1):
-            dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
-            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
-            dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
-
-        # Screen manager that holds the navigation rail which each display an individual dive
-
-        root_md_screen.add_widget(dive_md_screenmanager)
-
-        return root_md_screen
-
-
 class DiveLogsThread(threading.Thread):
     dive_logs: list
     dive_log: DiveLog
     dive_number: int
+    log_file: io.TextIOWrapper
 
     def __init__(self):
         threading.Thread.__init__(self)
         self.dive_logs = []
         self.dive_number = 0
-        # ThreadedApp().run()
+
+        self.log_file = open(
+            os.environ["USERPROFILE"]
+            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile-prev.log",
+            "r",
+            encoding="utf-8",
+            buffering=1000000,
+        )
 
     def run(self):
-        for line in self.follow_log():
-            self.parse_line(line)
+        # for line in self.follow_log():
+        #     self.parse_line(line)
 
+        self.parse_file_until_end()
+
+    def parse_file_until_end(self) -> str:
+        for next_line in self.follow_log():
+            if next_line:
+                self.parse_line(next_line)
+            else:
+                return
+
+    def get_dive_logs(self) -> list:
+        return self.dive_logs
+
+    # TODO: Figure out how to update interface with new data
     def follow_log(self):
-        file = open(
-            os.environ["USERPROFILE"]
-            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile.log",
-            "r",
-        )
         while True:
             # read last line of file
-            next_line = file.readline()
+            next_line = self.log_file.readline()
 
             if not next_line:
                 self.dive_log.print_data_frame()
@@ -323,18 +314,21 @@ class DiveLogsThread(threading.Thread):
 
             yield next_line
 
-    def parse_line(self, line):
+    def parse_line(self, line: str):
+        if "HandleRequest" in line:
+            return
+
+        if "EventOnUnitStatusEffectStacksAdded" in line:
+            return
+
         # maybe in the future care about solo vs not solo but for now this is fine
         if "Party run start triggered" in line:
             self.dive_number += 1
             logging.info(
-                "Creating new dive log #"
-                + str(self.dive_number)
-                + " and adding to dive_logs"
+                "Creating new dive log #%i and adding to dive_logs", self.dive_number
             )
             self.dive_log = DiveLog(self.dive_number)
             self.dive_logs.append(self.dive_log)
-            pass
 
         # the only reliable way to get player name from the logs
         # the alternative gives a hash value but doesnt connect to an entity afaik
@@ -346,11 +340,11 @@ class DiveLogsThread(threading.Thread):
 
         if "I Validating" in line:
             if "OnCombatEnter" in line:
-                self.dive_log.OnCombatEnter()
+                self.dive_log.on_combat_enter()
             if "OnTurnStart" in line:
-                self.dive_log.OnTurnStart()
+                self.dive_log.on_turn_start()
             if "OnCombatExit" in line:
-                self.dive_log.OnCombatExit()
+                self.dive_log.on_combat_exit()
 
         if "I Client unit state" in line:
             # setting
@@ -375,48 +369,48 @@ class DiveLogsThread(threading.Thread):
             # healing
 
 
-class EventSystem:
-    Timestamp: str
-    EventOn: str
-    WorldState: str
-    TargetUnitHandle: int
-    SourceEntityHandle: int
-    TargetUnitTeam: str  # can ignore
-    IsInActiveCombat: bool  # can ignore
-    DamageAmount: int
-    IsCriticalHit: bool
-    WasDodged: bool
-    ActionData: str  # janky
-    AbilityData: str
-    StatusEffectData: str
-    LootableData: str  # can ignore ( for now? )
+# TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
+class ThreadedApp(MDApp):
+    dive_logs_thread: DiveLogsThread
 
-    def __init__(self, line):
-        re_eventsystem = re.search(
-            r"(?P<Timestamp>.*?) \d\d I \[EventSystem\] broadcasting EventOn(?P<EventOn>.*?)-WorldState(?P<WorldState>.*?)-TargetUnitHandle:\(EntityHandle:(?P<TargetUnitHandle>\d*)\)-SourceEntityHandle:\(EntityHandle:(?P<SourceEntityHandle>\d*)\)-TargetUnitTeam:(?P<TargetUnitTeam>.*?)-IsInActiveCombat:(?P<IsInActiveCombat>.*?)-DamageAmount:(?P<DamageAmount>\d*?)-IsCriticalHit:(?P<IsCriticalHit>.*?)-WasDodged:(?P<WasDodged>.*?)-ActionData:ActionData-(?P<ActionData>.*?)-AbilityData:(?P<AbilityData>.*?)-StatusEffectData:(?P<StatusEffectData>.*?)-LootableData:(?P<LootableData>.*?)$",
-            line,
-        )
+    def on_stop(self):
+        # The Kivy event loop is about to stop, set a stop signal;
+        # otherwise the app window will close, but the Python process will
+        # keep running until all secondary threads exit.
+        self.root.stop.set()
 
-        if re_eventsystem is None:
-            logging.info(line)
+    def build(self):
+        root_md_screen = BoxLayout(orientation="vertical")
 
-        self.Timestamp = re_eventsystem.group("Timestamp")
-        self.EventOn = re_eventsystem.group("EventOn")
-        self.WorldState = re_eventsystem.group("WorldState")
-        self.TargetUnitHandle = re_eventsystem.group("TargetUnitHandle")
-        self.SourceEntityHandle = re_eventsystem.group("SourceEntityHandle")
-        self.TargetUnitTeam = re_eventsystem.group("TargetUnitTeam")
-        self.IsInActiveCombat = re_eventsystem.group("IsInActiveCombat")
-        self.DamageAmount = re_eventsystem.group("DamageAmount")
-        self.IsCriticalHit = re_eventsystem.group("IsCriticalHit")
-        self.WasDodged = re_eventsystem.group("WasDodged")
-        self.ActionData = re_eventsystem.group("ActionData")
-        self.AbilityData = re_eventsystem.group("AbilityData")
-        self.StatusEffectData = re_eventsystem.group("StatusEffectData")
-        self.LootableData = re_eventsystem.group("LootableData")
+        dive_md_screenmanager = ScreenManager()
+
+        dive_number_dropdown_menu = DiveNumberMDDropdownMenu(dive_md_screenmanager)
+
+        root_md_screen.add_widget(dive_number_dropdown_menu.get_menu_button())
+
+        # Screen manager that holds the navigation rail which each display an individual dive
+
+        ## TODO: Remove this, debugging the dropdown
+        # for dive_number in range(1, 4, 1):
+        #     dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
+        #     dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
+        #     dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
+
+        root_md_screen.add_widget(dive_md_screenmanager)
+
+        return root_md_screen
+
+    def on_start(self):
+        self.dive_logs_thread = DiveLogsThread()
+        # start will load_initial_dive_logs()
+        self.dive_logs_thread.start()
+
+    def load_initial_dive_logs(self):
+        for dive_log in self.dive_logs_thread.get_dive_logs():
+            logging.info("DEBUG: %s", dive_log)
+
+            # TODO Add dive screen for each log
 
 
 if __name__ == "__main__":
-    # DiveLogsThread().start()
-
     ThreadedApp().run()
