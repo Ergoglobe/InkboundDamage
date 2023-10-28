@@ -101,10 +101,7 @@ class DiveLog:
             player = Player(int(entity_handle), player_name)
             self.players[int(entity_handle)] = player
             logging.info(
-                "dive_number: "
-                + str(self.dive_number)
-                + " adding player: "
-                + player_name
+                "dive_number #%s adding player %s", str(self.dive_number), player_name
             )
 
     def add_damage(self, line) -> None:
@@ -216,8 +213,18 @@ class DiveLog:
 
 
 class DiveMDScreen(MDScreen):
+    screen_boxlayout: BoxLayout
+
+    def init_boxlayout(self):
+        self.screen_boxlayout = BoxLayout()
+        self.add_widget(self.screen_boxlayout)
+
     def add_dive_number_label(self) -> None:
-        self.add_widget(MDLabel(text="Dive #" + self.name, halign="center"))
+        dive_number_label = MDLabel(text="Dive #" + self.name, halign="center")
+        self.add_to_boxlayout(dive_number_label)
+
+    def add_to_boxlayout(self, widget):
+        self.screen_boxlayout.add_widget(widget)
 
 
 # this class holds the button and the menu itself
@@ -280,10 +287,9 @@ class DiveLogsThread(threading.Thread):
 
         self.log_file = open(
             os.environ["USERPROFILE"]
-            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile-prev.log",
+            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile-1.log",
             "r",
             encoding="utf-8",
-            buffering=1000000,
         )
 
         self.log_file_fully_loaded = False
@@ -378,7 +384,7 @@ class DiveLogsThread(threading.Thread):
             # healing
 
 
-# TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
+# TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-applicication
 class ThreadedApp(MDApp):
     dive_logs_thread: DiveLogsThread
 
@@ -415,6 +421,9 @@ class ThreadedApp(MDApp):
         ## TODO: Remove this, debugging the dropdown
         for dive_number in range(1, len(self.dive_logs_thread.get_dive_logs()) + 1):
             dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
+            dive_md_screenmanager.get_screen(str(dive_number)).init_boxlayout()
+            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
+            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
             dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
             dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
