@@ -295,7 +295,7 @@ class DiveLogsThread(threading.Thread):
             next_line = self.log_file.readline()
 
             if not next_line:
-                logging.info("Reached end of logfile.log")
+                # logging.info("Reached end of logfile.log")
                 # self.dive_log.print_data_frame()
                 self.log_file_fully_loaded = True
                 time.sleep(10)
@@ -388,21 +388,23 @@ class ThreadedApp(MDApp):
         # keep running until all secondary threads exit.
         self.root.stop.set()
 
-    def my_callback(self, *args):
-        print("TEST")
+    def wait_until_logs_fully_loaded(self, *args):
+        logging.info("Loading logs...")
+
+        while not self.dive_logs_thread.log_file_fully_loaded:
+            pass
+
+        logging.info("Logs loaded until end of file")
 
     def build(self):
         root_md_screen = BoxLayout(orientation="vertical")
-
         dive_md_screenmanager = ScreenManager()
-
         dive_number_dropdown_menu = DiveNumberMDDropdownMenu(dive_md_screenmanager)
 
         root_md_screen.add_widget(dive_number_dropdown_menu.get_menu_button())
-
         root_md_screen.add_widget(dive_md_screenmanager)
 
-        Clock.schedule_once(self.my_callback, 1)
+        Clock.schedule_once(self.wait_until_logs_fully_loaded, 0)
         ## TODO: Remove this, debugging the dropdown
         # for dive_number in range(1, 4, 1):
         #     dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
