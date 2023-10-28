@@ -10,7 +10,7 @@ import pprint
 
 
 from kivymd.app import MDApp
-
+from functools import partial
 from kivy.clock import Clock, mainthread
 
 from kivymd.uix.label import MDLabel
@@ -388,13 +388,12 @@ class ThreadedApp(MDApp):
         # keep running until all secondary threads exit.
         self.root.stop.set()
 
-    def wait_until_logs_fully_loaded(self, *args):
-        logging.info("Loading logs...")
-
-        while not self.dive_logs_thread.log_file_fully_loaded:
-            pass
-
-        logging.info("Logs loaded until end of file")
+    def add_dive(
+        self, dive_md_screenmanager, dive_number_dropdown_menu, dive_number
+    ) -> None:
+        dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
+        dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
+        dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
     def build(self):
         root_md_screen = BoxLayout(orientation="vertical")
@@ -404,19 +403,22 @@ class ThreadedApp(MDApp):
         root_md_screen.add_widget(dive_number_dropdown_menu.get_menu_button())
         root_md_screen.add_widget(dive_md_screenmanager)
 
-        Clock.schedule_once(self.wait_until_logs_fully_loaded, 0)
+        self.dive_logs_thread = DiveLogsThread()
+        self.dive_logs_thread.start()
+
+        logging.info("Loading logs...")
+        while not self.dive_logs_thread.log_file_fully_loaded:
+            pass
+        logging.info("Logs loaded until end of file")
+
+        print(len(self.dive_logs_thread.get_dive_logs()))
         ## TODO: Remove this, debugging the dropdown
-        # for dive_number in range(1, 4, 1):
-        #     dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
-        #     dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
-        #     dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
+        for dive_number in range(1, len(self.dive_logs_thread.get_dive_logs()) + 1):
+            dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
+            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
+            dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
         return root_md_screen
-
-    def on_start(self):
-        self.dive_logs_thread = DiveLogsThread()
-        # start will load_initial_dive_logs()
-        self.dive_logs_thread.start()
 
     def load_initial_dive_logs(self):
         for dive_log in self.dive_logs_thread.get_dive_logs():
