@@ -159,6 +159,8 @@ class DiveLog:
     def action_data_totals(self, combat_for_player_df: pd.DataFrame) -> pd.DataFrame:
         action_data_totals_df = pd.DataFrame({"action_data": [], "damage_amount": []})
 
+        # TODO maybe get list of all damage done by skill for a horizontal boxplot?
+
         for action_data in combat_for_player_df["action_data"].unique():
             action_data_sum = combat_for_player_df.loc[
                 combat_for_player_df["action_data"] == action_data, "damage_amount"

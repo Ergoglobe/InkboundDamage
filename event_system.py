@@ -37,7 +37,22 @@ class EventSystem:
             self.DamageAmount = re_eventsystem.group("DamageAmount")
             self.IsCriticalHit = re_eventsystem.group("IsCriticalHit")
             self.WasDodged = re_eventsystem.group("WasDodged")
-            self.ActionData = re_eventsystem.group("ActionData")
+            self.ActionData = self.clean_action_data(re_eventsystem.group("ActionData"))
             self.AbilityData = re_eventsystem.group("AbilityData")
             self.StatusEffectData = re_eventsystem.group("StatusEffectData")
             self.LootableData = re_eventsystem.group("LootableData")
+
+    def clean_action_data(self, action_data) -> str:
+        # remove _Action until end of line, dont care about the code in the parenthesis
+        # eg Spiked_Action (9KqJ7Ihe)
+        action_data = re.sub("_Action.*?$", "", action_data)
+        # remove _Damage
+        action_data = re.sub("_Damage", "", action_data)
+        # replace _Legendary_ with ->
+        # eg Stitch_Legendary_Splice becomes Stitch->Splice
+        action_data = re.sub("_Legendary_", "->", action_data)
+        # remove upgrade if it exists
+        # eg ConstrictUpgrade->Entwine becomes Constrict->Entwine
+        action_data = re.sub("Upgrade", "", action_data)
+
+        return action_data
