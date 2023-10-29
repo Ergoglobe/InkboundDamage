@@ -94,15 +94,7 @@ class DiveLog:
                 all_dive_damage_for_source_entity_df
             )
 
-            print(dive_damage_totals_df)
-
-            sorted_action_data_totals_for_source_entity_dict = (
-                dive_damage_totals_df.sort_values(by=["damage_amount"])
-            )
-
-        print(sorted_action_data_totals_for_source_entity_dict)
-
-        return sorted_action_data_totals_for_source_entity_dict
+        return dive_damage_totals_df
 
     def get_dive_number(self) -> int:
         return self.dive_number
