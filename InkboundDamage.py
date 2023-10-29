@@ -83,6 +83,27 @@ class DiveLog:
             ]
         )
 
+    def get_dive_totals(self) -> dict:
+        # player is an enity number stored as a key
+        for player in self.players:
+            all_dive_damage_for_source_entity_df = self.damage_df[
+                self.damage_df["source_entity"] == player
+            ]
+            # TODO figure out how to add this to each player in the dataframe
+            dive_damage_totals_df = self.action_data_totals(
+                all_dive_damage_for_source_entity_df
+            )
+
+            print(dive_damage_totals_df)
+
+            sorted_action_data_totals_for_source_entity_dict = (
+                dive_damage_totals_df.sort_values(by=["damage_amount"])
+            )
+
+        print(sorted_action_data_totals_for_source_entity_dict)
+
+        return sorted_action_data_totals_for_source_entity_dict
+
     def get_dive_number(self) -> int:
         return self.dive_number
 
@@ -143,23 +164,25 @@ class DiveLog:
         self.turn_number = 0
 
     # with given dataframe sum damage for each unique action_data
-    def action_data_totals(self, combat_for_player_df: pd.DataFrame) -> dict:
-        action_data_totals = {}
+    def action_data_totals(self, combat_for_player_df: pd.DataFrame) -> pd.DataFrame:
+        action_data_totals_df = pd.DataFrame()
+
+        pd.to_pickle(
+            combat_for_player_df, filepath_or_buffer="./combat_for_player_df.pkl"
+        )
 
         for action_data in combat_for_player_df["action_data"].unique():
-            action_data_sum = combat_for_player_df[
-                combat_for_player_df["action_data"] == action_data
-            ]["damage_amount"].sum()
+            action_data_totals_df[action_data] = combat_for_player_df.loc[
+                combat_for_player_df["action_data"] == action_data, "damage_amount"
+            ].sum()
 
-            action_data_totals[action_data] = action_data_sum
+            # action_data_sum = combat_for_player_df[
+            #     combat_for_player_df["action_data"] == action_data
+            # ]["damage_amount"].sum()
 
-        # DEBUG
-        # print("keys ")
-        # print(action_data_totals.keys())
-        # print("adt")
-        # print(action_data_total2wsx1qaz's)
+            # action_data_totals_dict[action_data] = action_data_sum
 
-        return action_data_totals
+        return action_data_totals_df
 
     def action_data_totals_percent(self, action_data_totals: pd.DataFrame) -> dict:
         totaldamage = sum(action_data_totals.values())
@@ -417,16 +440,14 @@ class ThreadedApp(MDApp):
             pass
         logging.info("Logs loaded until end of file")
 
-        print(len(self.dive_logs_thread.get_dive_logs()))
+        logging.info("Creating initial Dive Screen view...")
         ## TODO: Remove this, debugging the dropdown
         for dive_number in range(1, len(self.dive_logs_thread.get_dive_logs()) + 1):
             dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
             dive_md_screenmanager.get_screen(str(dive_number)).init_boxlayout()
             dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
-            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
-            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
             dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
-
+            self.dive_logs_thread.get_dive_logs()[dive_number - 1].get_dive_totals()
         return root_md_screen
 
     def load_initial_dive_logs(self):
