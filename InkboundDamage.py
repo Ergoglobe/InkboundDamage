@@ -165,22 +165,24 @@ class DiveLog:
 
     # with given dataframe sum damage for each unique action_data
     def action_data_totals(self, combat_for_player_df: pd.DataFrame) -> pd.DataFrame:
-        action_data_totals_df = pd.DataFrame()
-
-        pd.to_pickle(
-            combat_for_player_df, filepath_or_buffer="./combat_for_player_df.pkl"
-        )
+        action_data_totals_df = pd.DataFrame({"action_data": [], "damage_amount": []})
 
         for action_data in combat_for_player_df["action_data"].unique():
-            action_data_totals_df[action_data] = combat_for_player_df.loc[
+            action_data_sum = combat_for_player_df.loc[
                 combat_for_player_df["action_data"] == action_data, "damage_amount"
             ].sum()
 
-            # action_data_sum = combat_for_player_df[
-            #     combat_for_player_df["action_data"] == action_data
-            # ]["damage_amount"].sum()
+            action_data_sum_df = pd.DataFrame(
+                {"action_data": [action_data], "damage_amount": [action_data_sum]}
+            )
 
-            # action_data_totals_dict[action_data] = action_data_sum
+            action_data_totals_df = pd.concat(
+                [action_data_totals_df, action_data_sum_df]
+            )
+
+        action_data_totals_df = action_data_totals_df.sort_values(
+            by="damage_amount", ascending=False
+        )
 
         return action_data_totals_df
 
