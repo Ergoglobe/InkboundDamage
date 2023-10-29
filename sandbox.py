@@ -20,8 +20,6 @@ if __name__ == "__main__":
 
     # print(action_data_totals_df[action_data])
 
-    action_data_totals_df = action_data_totals_df.sort_values(
-        by="damage_amount", ascending=False
-    )
+    action_data_totals_df.sort_values(by="damage_amount", ascending=False, inplace=True)
 
     logging.info(action_data_totals_df)

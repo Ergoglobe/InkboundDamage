@@ -172,8 +172,8 @@ class DiveLog:
                 [action_data_totals_df, action_data_sum_df]
             )
 
-        action_data_totals_df = action_data_totals_df.sort_values(
-            by="damage_amount", ascending=False
+        action_data_totals_df.sort_values(
+            by="damage_amount", ascending=False, inplace=True
         )
 
         return action_data_totals_df
