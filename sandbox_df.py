@@ -49,7 +49,7 @@ if __name__ == "__main__":
         y="damage_amount",
         legend=False,
     )
-    # ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
-    # ax.bar_label(ax.containers[0])
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
+    ax.bar_label(ax.containers[0])
     plt.tight_layout()
     plt.show()

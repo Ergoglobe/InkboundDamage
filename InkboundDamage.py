@@ -242,8 +242,11 @@ class DiveMDScreen(MDScreen):
         dive_number_label = MDLabel(text="Dive #" + self.name, halign="center")
         self.add_to_boxlayout(dive_number_label)
 
-    def add_to_boxlayout(self, widget):
+    def add_to_boxlayout(self, widget) -> None:
         self.screen_boxlayout.add_widget(widget)
+
+    def add_action_data_totals(self) -> None:
+        pass
 
 
 # this class holds the button and the menu itself
@@ -323,7 +326,9 @@ class DiveLogsThread(threading.Thread):
                 # logging.info("Reached end of logfile.log")
                 # self.dive_log.print_data_frame()
                 self.log_file_fully_loaded = True
+
                 time.sleep(10)
+
                 continue
             else:
                 self.log_file_fully_loaded = False
@@ -355,6 +360,35 @@ class DiveLogsThread(threading.Thread):
             yield next_line
 
     def parse_line(self, line: str):
+        # Lines that arent needed to be parsed
+        if "broadcasting" in line:
+            if "EventOnUnitDamaged" not in line:
+                return
+
+        if "Evaluating quest progress" in line:
+            return
+
+        if "Updating quest progress" in line:
+            return
+
+        if "IncrementPlayerRecord" in line:
+            return
+
+        if "EventOrchestrationSystem" in line:
+            return
+
+        if "Evaluating quest state" in line:
+            return
+
+        if "TargetingSystem handling" in line:
+            return
+
+        if "Combat Simulation completed" in line:
+            return
+
+        if "Setting unit" in line:
+            return
+
         # maybe in the future care about solo vs not solo but for now this is fine
         if "Party run start triggered" in line:
             self.dive_number += 1
