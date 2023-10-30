@@ -55,4 +55,6 @@ class EventSystem:
         # eg ConstrictUpgrade->Entwine becomes Constrict->Entwine
         action_data = re.sub("Upgrade", "", action_data)
 
+        action_data = re.sub("Event_", "", action_data)
+
         return action_data

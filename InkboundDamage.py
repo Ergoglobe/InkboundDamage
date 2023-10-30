@@ -10,8 +10,10 @@ import pprint
 
 
 from kivymd.app import MDApp
-from functools import partial
-from kivy.clock import Clock, mainthread
+
+# use the following in the future for proper threading?
+# from functools import partial
+# from kivy.clock import Clock, mainthread
 
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
@@ -19,6 +21,12 @@ from kivymd.uix.screenmanager import ScreenManager
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.boxlayout import BoxLayout
+
+from kivy.garden.matplotlib import FigureCanvasKivyAgg
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 
 from event_system import EventSystem
 
@@ -235,18 +243,33 @@ class DiveMDScreen(MDScreen):
     screen_boxlayout: BoxLayout
 
     def init_boxlayout(self):
-        self.screen_boxlayout = BoxLayout()
+        self.screen_boxlayout = BoxLayout(orientation="vertical")
         self.add_widget(self.screen_boxlayout)
 
     def add_dive_number_label(self) -> None:
-        dive_number_label = MDLabel(text="Dive #" + self.name, halign="center")
+        dive_number_label = MDLabel(
+            text="Dive #" + self.name, halign="center", size_hint=(1, 0.05)
+        )
         self.add_to_boxlayout(dive_number_label)
 
     def add_to_boxlayout(self, widget) -> None:
         self.screen_boxlayout.add_widget(widget)
 
-    def add_action_data_totals(self) -> None:
-        pass
+    def add_action_data_totals(self, action_data_totals_df) -> None:
+        f, ax = plt.subplots(figsize=(10, 10))
+
+        sns.barplot(
+            action_data_totals_df,
+            x="action_data",
+            y="damage_amount",
+            legend=False,
+        )
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
+        ax.bar_label(ax.containers[0])
+        plt.tight_layout()
+        # plt.show()
+
+        self.screen_boxlayout.add_widget(FigureCanvasKivyAgg(plt.gcf()))
 
 
 # this class holds the button and the menu itself
@@ -309,7 +332,7 @@ class DiveLogsThread(threading.Thread):
 
         self.log_file = open(
             os.environ["USERPROFILE"]
-            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile-1.log",
+            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile.log",
             "r",
             encoding="utf-8",
         )
@@ -360,35 +383,6 @@ class DiveLogsThread(threading.Thread):
             yield next_line
 
     def parse_line(self, line: str):
-        # Lines that arent needed to be parsed
-        if "broadcasting" in line:
-            if "EventOnUnitDamaged" not in line:
-                return
-
-        if "Evaluating quest progress" in line:
-            return
-
-        if "Updating quest progress" in line:
-            return
-
-        if "IncrementPlayerRecord" in line:
-            return
-
-        if "EventOrchestrationSystem" in line:
-            return
-
-        if "Evaluating quest state" in line:
-            return
-
-        if "TargetingSystem handling" in line:
-            return
-
-        if "Combat Simulation completed" in line:
-            return
-
-        if "Setting unit" in line:
-            return
-
         # maybe in the future care about solo vs not solo but for now this is fine
         if "Party run start triggered" in line:
             self.dive_number += 1
@@ -477,6 +471,11 @@ class ThreadedApp(MDApp):
             dive_md_screenmanager.get_screen(str(dive_number)).init_boxlayout()
             dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
             dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
+
+            dive_md_screenmanager.get_screen(str(dive_number)).add_action_data_totals(
+                self.dive_logs_thread.get_dive_logs()[dive_number - 1].get_dive_totals()
+            )
+
             self.dive_logs_thread.get_dive_logs()[dive_number - 1].get_dive_totals()
         return root_md_screen
 

@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 # importing numpy
 import pandas as pd
 import numpy as np
+
+# this will be red because of how garden works
 from kivy.garden.matplotlib import FigureCanvasKivyAgg
 
 import seaborn as sns

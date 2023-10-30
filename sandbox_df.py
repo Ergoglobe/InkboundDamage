@@ -43,12 +43,19 @@ if __name__ == "__main__":
 
     f, ax = plt.subplots(figsize=(10, 10))
 
+    sequential_colors = sns.color_palette("RdYlBu", 10)
+
     sns.barplot(
         action_data_totals_df,
-        x="action_data",
-        y="damage_amount",
+        y="action_data",
+        x="damage_amount",
         legend=False,
+        palette=sequential_colors,
     )
+
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+
     ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
     ax.bar_label(ax.containers[0])
     plt.tight_layout()
