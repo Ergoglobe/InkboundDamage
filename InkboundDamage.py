@@ -24,6 +24,7 @@ from kivymd.uix.boxlayout import BoxLayout
 from kivymd.uix.gridlayout import GridLayout
 from kivymd.uix.scrollview import ScrollView
 
+# this import allows matplotlib in the kivyapp
 from kivy.garden.matplotlib import FigureCanvasKivyAgg
 
 import seaborn as sns
@@ -250,7 +251,7 @@ class DiveMDScreen(MDScreen):
     def add_action_data_totals_to_scroll_view_gridlayout(self, plot) -> None:
         self.scroll_view_gridlayout.add_widget(FigureCanvasKivyAgg(plot.gcf()))
 
-    def get_action_data_totals_barchart_plt(self, action_data_totals_df):
+    def get_action_data_totals_barchart_plt(self, action_data_totals_df, player_name):
         f, ax = plt.subplots(figsize=(10, 10))
 
         sns.barplot(
@@ -258,10 +259,17 @@ class DiveMDScreen(MDScreen):
             x="action_data",
             y="damage_amount",
             legend=False,
-        )
+        ).set(xlabel=None, ylabel=None)
+
         ax.set_xticklabels(ax.get_xticklabels(), rotation=20, ha="right")
         ax.bar_label(ax.containers[0])  # Show damage on top of bar
         plt.tight_layout()
+
+        # place title inside chart
+        plt.title(player_name, y=0.8, fontsize=16)
+
+        # add room for longer action_data values
+        plt.subplots_adjust(bottom=0.2)
 
         return plt
 
@@ -278,6 +286,7 @@ class DiveMDScreen(MDScreen):
             minimum_height=500,
         )
 
+        # need this for scrolling to work
         self.scroll_view_gridlayout.bind(
             minimum_height=self.scroll_view_gridlayout.setter("height")
         )
@@ -375,30 +384,8 @@ class DiveLogsThread(threading.Thread):
                 self.log_file_fully_loaded = False
                 self.parse_line(next_line)
 
-            # TODO update gui here
-
-    def parse_file_until_end(self) -> str:
-        for next_line in self.follow_log():
-            if next_line:
-                self.parse_line(next_line)
-            else:
-                return
-
     def get_dive_logs(self) -> list[DiveLog]:
         return self.dive_logs
-
-    # TODO: Figure out how to update interface with new data
-    def follow_log(self):
-        while True:
-            # read last line of file
-            next_line = self.log_file.readline()
-
-            if not next_line:
-                self.dive_log.print_data_frame()
-                time.sleep(10)
-                continue
-
-            yield next_line
 
     def parse_line(self, line: str):
         if "broadcasting EventOnUnitDamaged" in line:
@@ -448,6 +435,7 @@ class DiveLogsThread(threading.Thread):
             if "OnCombatExit" in line:
                 self.dive_log.on_combat_exit()
 
+        # doesnt match a pattern we care about so do nothing
         else:
             return
 
@@ -497,17 +485,20 @@ class ThreadedApp(MDApp):
             dive_screen.add_dive_number_label()
             dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
-            num_players = len(dive_logs[dive_number - 1].get_players())
+            dive_log = dive_logs[dive_number - 1]
+
+            num_players = len(dive_log.get_players())
             # change layout depending on number of players
 
             if num_players == 1:
                 # convert to list before getting first key
-                player_handle = list(dive_logs[dive_number - 1].get_players().keys())[0]
+                player_handle = list(dive_log.get_players().keys())[0]
 
                 # create totals and add to screen
                 dive_screen.add_action_data_totals(
                     dive_screen.get_action_data_totals_barchart_plt(
-                        dive_logs[dive_number - 1].get_dive_totals()[player_handle]
+                        dive_log.get_dive_totals()[player_handle],
+                        dive_log.get_players()[player_handle],
                     )
                 )
 
@@ -521,7 +512,8 @@ class ThreadedApp(MDApp):
                 for player_handle in list(players.keys()):
                     dive_screen.add_action_data_totals_to_scroll_view_gridlayout(
                         dive_screen.get_action_data_totals_barchart_plt(
-                            dive_logs[dive_number - 1].get_dive_totals()[player_handle]
+                            dive_log.get_dive_totals()[player_handle],
+                            dive_log.get_players()[player_handle],
                         )
                     )
 
