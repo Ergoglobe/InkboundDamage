@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 
 
 from event_system import EventSystem
+from event_system import parse_event_system
 
 logging.basicConfig(
     level=logging.INFO,
@@ -126,23 +127,30 @@ class DiveLog:
             )
 
     def add_damage(self, line) -> None:
-        event_system_line_parse = EventSystem(line)
+        # event_system_line_parse = EventSystem(line)
 
-        target_entity = event_system_line_parse.TargetUnitHandle
-        source_entity = event_system_line_parse.SourceEntityHandle
-        damage_amount = event_system_line_parse.DamageAmount
-        action_data = event_system_line_parse.ActionData
+        # target_entity = event_system_line_parse.TargetUnitHandle
+        # source_entity = event_system_line_parse.SourceEntityHandle
+        # damage_amount = event_system_line_parse.DamageAmount
+        # action_data = event_system_line_parse.ActionData
+
+        # Try using a function isntead of creating an object
+
+        new_damage_dict = parse_event_system(line)
 
         # TODO add overkill damage compare damage amount to target_entity latest HP and get overkill
 
-        new_damage_dict = {
-            "Combat": [int(self.combat_number)],
-            "Turn": [int(self.turn_number)],
-            "source_entity": [int(source_entity)],
-            "target_entity": [int(target_entity)],
-            "damage_amount": [int(damage_amount)],
-            "action_data": [action_data],
-        }
+        # new_damage_dict = {
+        #     "Combat": [int(self.combat_number)],
+        #     "Turn": [int(self.turn_number)],
+        #     "source_entity": [int(source_entity)],
+        #     "target_entity": [int(target_entity)],
+        #     "damage_amount": [int(damage_amount)],
+        #     "action_data": [action_data],
+        # }
+
+        new_damage_dict["Combat"] = [int(self.combat_number)]
+        new_damage_dict["Turn"] = [int(self.turn_number)]
 
         new_damage_df = pd.DataFrame.from_records(new_damage_dict)
 
@@ -383,32 +391,10 @@ class DiveLogsThread(threading.Thread):
             yield next_line
 
     def parse_line(self, line: str):
-        # maybe in the future care about solo vs not solo but for now this is fine
-        if "Party run start triggered" in line:
-            self.dive_number += 1
-            logging.info(
-                "Creating new dive log #%i and adding to dive_logs", self.dive_number
-            )
-            self.dive_log = DiveLog(self.dive_number)
-            self.dive_logs.append(self.dive_log)
-
-        # the only reliable way to get player name from the logs
-        # the alternative gives a hash value but doesnt connect to an entity afaik
-        if "is playing ability" in line:
-            self.dive_log.add_player(line)
-
         if "broadcasting EventOnUnitDamaged" in line:
             self.dive_log.add_damage(line)
 
-        if "I Validating" in line:
-            if "OnCombatEnter" in line:
-                self.dive_log.on_combat_enter()
-            if "OnTurnStart" in line:
-                self.dive_log.on_turn_start()
-            if "OnCombatExit" in line:
-                self.dive_log.on_combat_exit()
-
-        if "I Client unit state" in line:
+        elif "I Client unit state" in line:
             # setting
             if "Setting" in line:
                 setting_hp_match = re.search(
@@ -429,6 +415,31 @@ class DiveLogsThread(threading.Thread):
                 new_hp = healing_match.group("new_hp")
 
             # healing
+
+        # maybe in the future care about solo vs not solo but for now this is fine
+        elif "Party run start triggered" in line:
+            self.dive_number += 1
+            logging.info(
+                "Creating new dive log #%i and adding to dive_logs", self.dive_number
+            )
+            self.dive_log = DiveLog(self.dive_number)
+            self.dive_logs.append(self.dive_log)
+
+        # the only reliable way to get player name from the logs
+        # the alternative gives a hash value but doesnt connect to an entity afaik
+        elif "is playing ability" in line:
+            self.dive_log.add_player(line)
+
+        elif "I Validating" in line:
+            if "OnCombatEnter" in line:
+                self.dive_log.on_combat_enter()
+            if "OnTurnStart" in line:
+                self.dive_log.on_turn_start()
+            if "OnCombatExit" in line:
+                self.dive_log.on_combat_exit()
+
+        else:
+            return
 
 
 # TODO https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-applicication

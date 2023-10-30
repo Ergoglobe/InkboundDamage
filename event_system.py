@@ -2,6 +2,28 @@ import re
 import logging
 
 
+# Only parse whats necessary
+def parse_event_system(line) -> dict:
+    # re_eventsystem = re.search(
+    #     r"(?P<Timestamp>.*?)( (\d\d) I \[EventSystem\] broadcasting EventOn)(?P<EventOn>.*?)(-WorldState)(?P<WorldState>.*?)(-TargetUnitHandle:\(EntityHandle:)(?P<TargetUnitHandle>\d*)(\)-SourceEntityHandle:\(EntityHandle:)(?P<SourceEntityHandle>\d*)(\)-TargetUnitTeam:)(?P<TargetUnitTeam>.*?)(-IsInActiveCombat:)(?P<IsInActiveCombat>.*?)(-DamageAmount:)(?P<DamageAmount>\d*?)(-IsCriticalHit:)(?P<IsCriticalHit>.*?)(-WasDodged:)(?P<WasDodged>.*?)(-ActionData:ActionData-)(?P<ActionData>.*?)(-AbilityData:)(?P<AbilityData>.*?)(-StatusEffectData:)(?P<StatusEffectData>.*?)(-LootableData:)(?P<LootableData>.*?)$",
+    #     line,
+    # )
+
+    event_dict = {
+        "target_entity": [
+            int(re.search("(?<=TargetUnitHandle:\(EntityHandle:)(\d*)", line).group())
+        ],
+        "source_entity": [
+            int(re.search("(?<=SourceEntityHandle:\(EntityHandle:)(\d*)", line).group())
+        ],
+        "damage_amount": [int(re.search("(?<=DamageAmount:)(\d*)", line).group())],
+        "action_data": [
+            clean_action_data(re.search("(?<=ActionData:)([a-zA-Z-_]*)", line).group())
+        ],
+    }
+    return event_dict
+
+
 class EventSystem:
     Timestamp: str
     EventOn: str
@@ -25,7 +47,7 @@ class EventSystem:
         )
 
         if re_eventsystem is None:
-            logging.info("re_eventsystem: %s", line)
+            logging.debug("re_eventsystem: %s", line)
         else:
             self.Timestamp = re_eventsystem.group("Timestamp")
             self.EventOn = re_eventsystem.group("EventOn")
@@ -37,24 +59,25 @@ class EventSystem:
             self.DamageAmount = re_eventsystem.group("DamageAmount")
             self.IsCriticalHit = re_eventsystem.group("IsCriticalHit")
             self.WasDodged = re_eventsystem.group("WasDodged")
-            self.ActionData = self.clean_action_data(re_eventsystem.group("ActionData"))
+            self.ActionData = clean_action_data(re_eventsystem.group("ActionData"))
             self.AbilityData = re_eventsystem.group("AbilityData")
             self.StatusEffectData = re_eventsystem.group("StatusEffectData")
             self.LootableData = re_eventsystem.group("LootableData")
 
-    def clean_action_data(self, action_data) -> str:
-        # remove _Action until end of line, dont care about the code in the parenthesis
-        # eg Spiked_Action (9KqJ7Ihe)
-        action_data = re.sub("_Action.*?$", "", action_data)
-        # remove _Damage
-        action_data = re.sub("_Damage", "", action_data)
-        # replace _Legendary_ with ->
-        # eg Stitch_Legendary_Splice becomes Stitch->Splice
-        action_data = re.sub("_Legendary_", "->", action_data)
-        # remove upgrade if it exists
-        # eg ConstrictUpgrade->Entwine becomes Constrict->Entwine
-        action_data = re.sub("Upgrade", "", action_data)
 
-        action_data = re.sub("Event_", "", action_data)
+def clean_action_data(action_data) -> str:
+    # remove _Action until end of line, dont care about the code in the parenthesis
+    # eg Spiked_Action (9KqJ7Ihe)
+    action_data = re.sub("_Action.*?$", "", action_data)
+    # remove _Damage
+    action_data = re.sub("_Damage", "", action_data)
+    # replace _Legendary_ with ->
+    # eg Stitch_Legendary_Splice becomes Stitch->Splice
+    action_data = re.sub("_Legendary_", "->", action_data)
+    # remove upgrade if it exists
+    # eg ConstrictUpgrade->Entwine becomes Constrict->Entwine
+    action_data = re.sub("Upgrade", "", action_data)
 
-        return action_data
+    action_data = re.sub("Event_", "", action_data)
+
+    return action_data

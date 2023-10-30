@@ -40,8 +40,10 @@ BoxLayout:
         current_directory = os.getcwd()
 
         combat_for_player_df = pd.read_pickle(
-            os.path.join(current_directory, "combat_for_player_df.pkl")
+            os.path.join(current_directory, "debug.pkl")
         )
+
+        print(combat_for_player_df)
 
         action_data_totals_df = pd.DataFrame({"action_data": [], "damage_amount": []})
 
@@ -64,12 +66,12 @@ BoxLayout:
             by="damage_amount", ascending=False, inplace=True
         )
 
-        f, ax = plt.subplots(figsize=(10, 10))
+        f, ax = plt.subplots(figsize=(10, 5))
 
         sns.barplot(
             action_data_totals_df,
-            x="action_data",
-            y="damage_amount",
+            y="action_data",
+            x="damage_amount",
             legend=False,
         )
         ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
