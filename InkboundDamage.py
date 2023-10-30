@@ -127,30 +127,23 @@ class DiveLog:
             )
 
     def add_damage(self, line) -> None:
-        # event_system_line_parse = EventSystem(line)
+        event_system_line_parse = EventSystem(line)
 
-        # target_entity = event_system_line_parse.TargetUnitHandle
-        # source_entity = event_system_line_parse.SourceEntityHandle
-        # damage_amount = event_system_line_parse.DamageAmount
-        # action_data = event_system_line_parse.ActionData
-
-        # Try using a function isntead of creating an object
-
-        new_damage_dict = parse_event_system(line)
+        target_entity = event_system_line_parse.TargetUnitHandle
+        source_entity = event_system_line_parse.SourceEntityHandle
+        damage_amount = event_system_line_parse.DamageAmount
+        action_data = event_system_line_parse.ActionData
 
         # TODO add overkill damage compare damage amount to target_entity latest HP and get overkill
 
-        # new_damage_dict = {
-        #     "Combat": [int(self.combat_number)],
-        #     "Turn": [int(self.turn_number)],
-        #     "source_entity": [int(source_entity)],
-        #     "target_entity": [int(target_entity)],
-        #     "damage_amount": [int(damage_amount)],
-        #     "action_data": [action_data],
-        # }
-
-        new_damage_dict["Combat"] = [int(self.combat_number)]
-        new_damage_dict["Turn"] = [int(self.turn_number)]
+        new_damage_dict = {
+            "Combat": [int(self.combat_number)],
+            "Turn": [int(self.turn_number)],
+            "source_entity": [int(source_entity)],
+            "target_entity": [int(target_entity)],
+            "damage_amount": [int(damage_amount)],
+            "action_data": [action_data],
+        }
 
         new_damage_df = pd.DataFrame.from_records(new_damage_dict)
 
