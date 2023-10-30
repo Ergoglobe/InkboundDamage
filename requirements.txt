@@ -1,0 +1,6 @@
+Kivy==2.2.1
+kivymd==1.1.1
+matplotlib==3.7.2
+numpy==1.26.1
+pandas==1.5.3
+seaborn==0.13.0
