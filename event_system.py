@@ -2,28 +2,6 @@ import re
 import logging
 
 
-# Only parse whats necessary
-def parse_event_system(line) -> dict:
-    # re_eventsystem = re.search(
-    #     r"(?P<Timestamp>.*?)( (\d\d) I \[EventSystem\] broadcasting EventOn)(?P<EventOn>.*?)(-WorldState)(?P<WorldState>.*?)(-TargetUnitHandle:\(EntityHandle:)(?P<TargetUnitHandle>\d*)(\)-SourceEntityHandle:\(EntityHandle:)(?P<SourceEntityHandle>\d*)(\)-TargetUnitTeam:)(?P<TargetUnitTeam>.*?)(-IsInActiveCombat:)(?P<IsInActiveCombat>.*?)(-DamageAmount:)(?P<DamageAmount>\d*?)(-IsCriticalHit:)(?P<IsCriticalHit>.*?)(-WasDodged:)(?P<WasDodged>.*?)(-ActionData:ActionData-)(?P<ActionData>.*?)(-AbilityData:)(?P<AbilityData>.*?)(-StatusEffectData:)(?P<StatusEffectData>.*?)(-LootableData:)(?P<LootableData>.*?)$",
-    #     line,
-    # )
-
-    event_dict = {
-        "target_entity": [
-            int(re.search("(?<=TargetUnitHandle:\(EntityHandle:)(\d*)", line).group())
-        ],
-        "source_entity": [
-            int(re.search("(?<=SourceEntityHandle:\(EntityHandle:)(\d*)", line).group())
-        ],
-        "damage_amount": [int(re.search("(?<=DamageAmount:)(\d*)", line).group())],
-        "action_data": [
-            clean_action_data(re.search("(?<=ActionData:)([a-zA-Z-_]*)", line).group())
-        ],
-    }
-    return event_dict
-
-
 class EventSystem:
     Timestamp: str
     EventOn: str
@@ -79,5 +57,15 @@ def clean_action_data(action_data) -> str:
     action_data = re.sub("Upgrade", "", action_data)
 
     action_data = re.sub("Event_", "", action_data)
+
+    # One punch man
+    action_data = re.sub("_PhysicalDamage", "_Phys", action_data)
+    action_data = re.sub("_MagicDamage", "_Magic", action_data)
+
+    # Sets
+    action_data = re.sub("_Set", "", action_data)
+
+    # Shadow Set
+    action_data = re.sub("_TakeDamage", "_Dmg", action_data)
 
     return action_data

@@ -21,15 +21,15 @@ from kivymd.uix.screenmanager import ScreenManager
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.boxlayout import BoxLayout
+from kivymd.uix.gridlayout import GridLayout
+from kivymd.uix.scrollview import ScrollView
 
 from kivy.garden.matplotlib import FigureCanvasKivyAgg
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-
 from event_system import EventSystem
-from event_system import parse_event_system
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,12 +94,14 @@ class DiveLog:
 
     def get_dive_totals(self) -> dict:
         # player is an enity number stored as a key
+        dive_damage_totals_df = {}
+
         for player in self.players:
             all_dive_damage_for_source_entity_df = self.damage_df[
                 self.damage_df["source_entity"] == player
             ]
             # TODO figure out how to add this to each player in the dataframe
-            dive_damage_totals_df = self.action_data_totals(
+            dive_damage_totals_df[player] = self.action_data_totals(
                 all_dive_damage_for_source_entity_df
             )
 
@@ -223,25 +225,11 @@ class DiveLog:
                     action_data_totals
                 )
 
-                # logging.info(
-                #     "combat_data_percent\n" + pprint.pformat(combat_data_percent) + "\n"
-                # )
-
-
-# class DiveMDScreen:
-#     Screen: MDScreen
-
-#     def __init__(self, name) -> None:
-#         self.Screen = MDScreen()
-#         self.Screen.name = name
-#         self.Screen.add_widget(MDLabel(text="Dive #" + name, halign="center"))
-
-#     def get_screen(self) -> MDScreen:
-#         return self.Screen
-
 
 class DiveMDScreen(MDScreen):
     screen_boxlayout: BoxLayout
+    scroll_view = ScrollView
+    scroll_view_gridlayout = GridLayout
 
     def init_boxlayout(self):
         self.screen_boxlayout = BoxLayout(orientation="vertical")
@@ -256,7 +244,13 @@ class DiveMDScreen(MDScreen):
     def add_to_boxlayout(self, widget) -> None:
         self.screen_boxlayout.add_widget(widget)
 
-    def add_action_data_totals(self, action_data_totals_df) -> None:
+    def add_action_data_totals(self, plot) -> None:
+        self.screen_boxlayout.add_widget(FigureCanvasKivyAgg(plot.gcf()))
+
+    def add_action_data_totals_to_scroll_view_gridlayout(self, plot) -> None:
+        self.scroll_view_gridlayout.add_widget(FigureCanvasKivyAgg(plot.gcf()))
+
+    def get_action_data_totals_barchart_plt(self, action_data_totals_df):
         f, ax = plt.subplots(figsize=(10, 10))
 
         sns.barplot(
@@ -265,12 +259,35 @@ class DiveMDScreen(MDScreen):
             y="damage_amount",
             legend=False,
         )
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
-        ax.bar_label(ax.containers[0])
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=20, ha="right")
+        ax.bar_label(ax.containers[0])  # Show damage on top of bar
         plt.tight_layout()
-        # plt.show()
 
-        self.screen_boxlayout.add_widget(FigureCanvasKivyAgg(plt.gcf()))
+        return plt
+
+    def add_scroll_view(self) -> None:
+        self.scroll_view = ScrollView(do_scroll_y=True, do_scroll_x=False)
+        self.add_to_boxlayout(self.scroll_view)
+
+        self.scroll_view_gridlayout = GridLayout(
+            cols=1,
+            spacing=10,
+            size_hint=(1, None),
+            row_default_height=500,
+            row_force_default=True,
+            minimum_height=500,
+        )
+
+        self.scroll_view_gridlayout.bind(
+            minimum_height=self.scroll_view_gridlayout.setter("height")
+        )
+
+        self.scroll_view.add_widget(self.scroll_view_gridlayout)
+
+    def add_to_scroll_view_gridlayout(self, plot) -> None:
+        self.scroll_view_gridlayout.add_widget(
+            FigureCanvasKivyAgg(plot.gcf()), size_hint=(1, 1)
+        )
 
 
 # this class holds the button and the menu itself
@@ -302,7 +319,7 @@ class DiveNumberMDDropdownMenu:
         return self.dive_number_dropdown_menu
 
     def menu_callback(self, dive_number: str):
-        print("Change screen to dive# " + dive_number)
+        logging.info("Change screen to dive# " + dive_number)
         self.dive_screen_manager.current = dive_number
 
     def add_dive_number_to_dropdown_menu(self, dive_number: int):
@@ -333,7 +350,7 @@ class DiveLogsThread(threading.Thread):
 
         self.log_file = open(
             os.environ["USERPROFILE"]
-            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile.log",
+            + "/AppData/LocalLow/Shiny Shoe/Inkbound/logfile-2 dives 2 players.log",  #  - 2 dives 2 players
             "r",
             encoding="utf-8",
         )
@@ -367,7 +384,7 @@ class DiveLogsThread(threading.Thread):
             else:
                 return
 
-    def get_dive_logs(self) -> list:
+    def get_dive_logs(self) -> list[DiveLog]:
         return self.dive_logs
 
     # TODO: Figure out how to update interface with new data
@@ -469,18 +486,45 @@ class ThreadedApp(MDApp):
         logging.info("Logs loaded until end of file")
 
         logging.info("Creating initial Dive Screen view...")
-        ## TODO: Remove this, debugging the dropdown
-        for dive_number in range(1, len(self.dive_logs_thread.get_dive_logs()) + 1):
-            dive_md_screenmanager.add_widget(DiveMDScreen(name=str(dive_number)))
-            dive_md_screenmanager.get_screen(str(dive_number)).init_boxlayout()
-            dive_md_screenmanager.get_screen(str(dive_number)).add_dive_number_label()
+
+        dive_logs = self.dive_logs_thread.get_dive_logs()
+
+        for dive_number in range(1, len(dive_logs) + 1):
+            dive_screen = DiveMDScreen(name=str(dive_number))
+
+            dive_md_screenmanager.add_widget(dive_screen)
+            dive_screen.init_boxlayout()
+            dive_screen.add_dive_number_label()
             dive_number_dropdown_menu.add_dive_number_to_dropdown_menu(dive_number)
 
-            dive_md_screenmanager.get_screen(str(dive_number)).add_action_data_totals(
-                self.dive_logs_thread.get_dive_logs()[dive_number - 1].get_dive_totals()
-            )
+            num_players = len(dive_logs[dive_number - 1].get_players())
+            # change layout depending on number of players
 
-            self.dive_logs_thread.get_dive_logs()[dive_number - 1].get_dive_totals()
+            if num_players == 1:
+                # convert to list before getting first key
+                player_handle = list(dive_logs[dive_number - 1].get_players().keys())[0]
+
+                # create totals and add to screen
+                dive_screen.add_action_data_totals(
+                    dive_screen.get_action_data_totals_barchart_plt(
+                        dive_logs[dive_number - 1].get_dive_totals()[player_handle]
+                    )
+                )
+
+            else:
+                # create scrollview widget and add to layout
+                dive_screen.add_scroll_view()
+                players = self.dive_logs_thread.get_dive_logs()[
+                    dive_number - 1
+                ].get_players()
+                # add totals for each player to scroll view
+                for player_handle in list(players.keys()):
+                    dive_screen.add_action_data_totals_to_scroll_view_gridlayout(
+                        dive_screen.get_action_data_totals_barchart_plt(
+                            dive_logs[dive_number - 1].get_dive_totals()[player_handle]
+                        )
+                    )
+
         return root_md_screen
 
     def load_initial_dive_logs(self):
