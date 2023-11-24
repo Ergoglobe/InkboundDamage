@@ -47,7 +47,29 @@ def render(dive_logs):
 
                 # add tab to all tabs
                 DIVE_TABS[dive_number] = dive_tab
-                # print("adding dive_tab #" + str(dive_log.dive_number))
+                player_labels: dict[int, dict[str, any]] = {}
+
+                player_frames = {}
+                PLAYER_FRAMES[dive_number] = player_frames
+                PLAYER_LABELS[dive_number] = player_labels
+
+                tabControl.add(dive_tab, text=f"Dive #{str(dive_number)}")
+                tabControl.pack(expand=1, fill="both")
+            elif dive_number in DIVE_TABS:
+                dive_tab = DIVE_TABS[dive_number]
+                # print("getting dive_tab #" + str(dive_log.dive_number))
+
+                player_frames = PLAYER_FRAMES[dive_number]
+                player_labels = PLAYER_LABELS[dive_number]
+
+            else:
+                # if it doesnt exist then create a new dive tab
+                # create a frame for current dive
+                dive_tab = ttk.Frame(tabControl, width=600, height=200)
+                dive_tab.pack(fill="both", expand=True)
+
+                # add tab to all tabs
+                DIVE_TABS[dive_number] = dive_tab
 
                 player_frames = {}
                 player_labels: dict[int, dict[str, any]] = {}
@@ -55,35 +77,9 @@ def render(dive_logs):
                 PLAYER_FRAMES[dive_number] = player_frames
                 PLAYER_LABELS[dive_number] = player_labels
 
-                tabControl.add(dive_tab, text="Dive #" + str(dive_number))
-                tabControl.pack(expand=1, fill="both")
-            else:
-                # get dive tab for current dive_number
-                if dive_number in DIVE_TABS:
-                    dive_tab = DIVE_TABS[dive_number]
-                    # print("getting dive_tab #" + str(dive_log.dive_number))
-
-                    player_frames = PLAYER_FRAMES[dive_number]
-                    player_labels = PLAYER_LABELS[dive_number]
-
-                else:
-                    # if it doesnt exist then create a new dive tab
-                    # create a frame for current dive
-                    dive_tab = ttk.Frame(tabControl, width=600, height=200)
-                    dive_tab.pack(fill="both", expand=True)
-
-                    # add tab to all tabs
-                    DIVE_TABS[dive_number] = dive_tab
-
-                    player_frames = {}
-                    player_labels: dict[int, dict[str, any]] = {}
-
-                    PLAYER_FRAMES[dive_number] = player_frames
-                    PLAYER_LABELS[dive_number] = player_labels
-
                     # add to tabController
-                    tabControl.add(dive_tab, text="Dive #" + str(dive_number))
-                    tabControl.pack(expand=1, fill="both")
+                tabControl.add(dive_tab, text=f"Dive #{str(dive_number)}")
+                tabControl.pack(expand=1, fill="both")
 
             players = dive_log.get_players()
 
@@ -143,17 +139,26 @@ def render(dive_logs):
                     key=lambda x: player.damage_dealt[x],
                 )
                 for i, ability in enumerate(abilities, start=3):
-                    if ability + "_label" not in player_labels[player.id].keys():
+                    if (
+                        f"{ability}_label"
+                        not in player_labels[player.id].keys()
+                    ):
                         label = tk.Label(player_frame, text=ability)
-                        player_labels[player.id][ability + "_label"] = label
+                        player_labels[player.id][f"{ability}_label"] = label
 
-                    if ability + "_amount" not in player_labels[player.id].keys():
+                    if (
+                        f"{ability}_amount"
+                        not in player_labels[player.id].keys()
+                    ):
                         amount = tk.Label(player_frame)
-                        player_labels[player.id][ability + "_amount"] = amount
+                        player_labels[player.id][f"{ability}_amount"] = amount
 
-                    if ability + "_percent" not in player_labels[player.id].keys():
+                    if (
+                        f"{ability}_percent"
+                        not in player_labels[player.id].keys()
+                    ):
                         percent = tk.Label(player_frame)
-                        player_labels[player.id][ability + "_percent"] = percent
+                        player_labels[player.id][f"{ability}_percent"] = percent
 
                     player_name_label = player_labels[player.id]["player_name_label"]
                     total_damage_amount = player_labels[player.id][
@@ -162,9 +167,9 @@ def render(dive_logs):
                     damage_received_amount = player_labels[player.id][
                         "damage_received_amount"
                     ]
-                    label = player_labels[player.id][ability + "_label"]
-                    amount = player_labels[player.id][ability + "_amount"]
-                    percent = player_labels[player.id][ability + "_percent"]
+                    label = player_labels[player.id][f"{ability}_label"]
+                    amount = player_labels[player.id][f"{ability}_amount"]
+                    percent = player_labels[player.id][f"{ability}_percent"]
 
                     player_name_label.config(
                         text=player.name
@@ -223,8 +228,6 @@ def get_class_color(class_id):
         return "#963694"
     elif class_id == "C05":
         return "#67809f"
-    elif class_id == "C06":
-        return "grey"
     elif class_id == "C07":
         return "#F4C430"
     else:
