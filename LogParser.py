@@ -105,8 +105,6 @@ class EventSystem:
 
         self.Timestamp = re_eventsystem.group("timestamp")
 
-        pass
-
 
 def handle_line(line):
     global DIVE_LOG
@@ -126,7 +124,7 @@ def handle_line(line):
         # add DIVE_LOG to dicionary
         DIVE_LOGS[DIVE_NUMBER] = DIVE_LOG
 
-        print("Party Run Started " + str(DIVE_NUMBER))
+        print(f"Party Run Started {DIVE_NUMBER}")
 
     if "EventOnCombatStarted" in line:
         COMBAT_NUMBER += 1
@@ -192,17 +190,9 @@ def register_status_effect_stacks(line, dive):
     ).group()
 
     stacks_added = re.search("(?<=StacksAdded:)(\d*)", line)
-    if stacks_added is None:
-        stacks_added = 0
-    else:
-        stacks_added = int(stacks_added.group())
-
+    stacks_added = 0 if stacks_added is None else int(stacks_added.group())
     stacks_removed = re.search("(?<=StacksRemoved:)(\d*)", line)
-    if stacks_removed is None:
-        stacks_removed = 0
-    else:
-        stacks_removed = int(stacks_removed.group())
-
+    stacks_removed = 0 if stacks_removed is None else int(stacks_removed.group())
     players = dive.get_players()
 
     if type == "Added":

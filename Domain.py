@@ -13,16 +13,10 @@ class Player:
     status_effects_received: dict[str, int, int, int, int]
 
     def get_total_damage(self):
-        player_total_damage = 0
-        for value in self.damage_dealt.values():
-            player_total_damage += value
-        return player_total_damage
+        return sum(self.damage_dealt.values())
 
     def get_total_damage_received(self):
-        player_damage_taken = 0
-        for value in self.damage_received.values():
-            player_damage_taken += value
-        return player_damage_taken
+        return sum(self.damage_received.values())
 
     def get_percent_total_damage(self, damage_source):
         return "({:.1%})".format(
